@@ -35,3 +35,30 @@ export function Logo({ size = 48, className, ...props }: LogoProps) {
     </svg>
   );
 }
+
+interface LogoWithTextProps extends LogoProps {
+  textClassName?: string;
+}
+
+export function LogoWithText({
+  size = 32,
+  className,
+  textClassName,
+  ...props
+}: LogoWithTextProps) {
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <Logo size={size} {...props} />
+      <span
+        className={cn(
+          "font-bold tracking-tighter text-foreground select-none",
+          textClassName
+        )}
+        style={{ fontSize: size * 0.8 }}
+      >
+        Code Atlas
+      </span>
+    </div>
+  );
+}
+
