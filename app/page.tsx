@@ -16,7 +16,10 @@ import {
   Gauge, 
   Sparkles, 
   ArrowUpRight,
-  Star
+  Star,
+  LogOut,
+  User,
+  Settings
 } from 'lucide-react';
 import BackgroundCanvas from '@/components/background-canvas';
 import { Button } from '@/components/ui/button';
@@ -24,6 +27,22 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LogoWithText } from '@/components/Logo';
+import Link from 'next/link';
+import { authClient } from '@/lib/auth-client';
+import { useRouter } from 'next/navigation';
+import { 
+  Avatar, 
+  AvatarImage, 
+  AvatarFallback 
+} from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const ScrollingCode = ({ color = "text-blue-400/20" }) => {
   const codeSnippet = `
@@ -128,6 +147,33 @@ const ScrollingChat = () => {
 export default function LandingPage() {
   const [scrolled, setScrolled] = React.useState(false);
 
+  const { data: session } = authClient.useSession();
+  const router = useRouter();
+
+  const handleSignIn = async () => {
+    await authClient.signIn.social({
+      provider: 'github',
+      callbackURL: '/codebase',
+    });
+  };
+
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.refresh();
+        },
+      },
+    });
+  };
+
+  const handleGetStarted = (e: React.MouseEvent) => {
+    if (!session) {
+      e.preventDefault();
+      handleSignIn();
+    }
+  };
+
   React.useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -152,12 +198,59 @@ export default function LandingPage() {
             </a>
           </div>
 
-          {/* Right: Login */}
+          {/* Right: Auth Action */}
           <div className="flex items-center justify-end w-1/3">
-            <Button variant="outline" size="sm" className="flex items-center gap-2 border-border bg-transparent hover:bg-secondary/50">
-              <Github className="w-5 h-5" />
-              <span className="text-xs font-medium">Login with GitHub</span>
-            </Button>
+            {!session ? (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2 border-border bg-transparent hover:bg-secondary/50"
+                onClick={handleSignIn}
+              >
+                <Github className="w-5 h-5" />
+                <span className="text-xs font-medium">Login with GitHub</span>
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="size-10 p-0 rounded-full overflow-hidden border border-border/50 hover:bg-secondary/50">
+                    <Avatar size="default">
+                      <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
+                      <AvatarFallback className="text-xs">{session.user.name?.[0] || "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 mt-2">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/codebase')} className="cursor-pointer">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer" 
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </nav>
@@ -190,9 +283,11 @@ export default function LandingPage() {
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="rounded-lg px-8">
-                  Get Started
-                </Button>
+                <Link href="/codebase" onClick={handleGetStarted}>
+                  <Button size="lg" className="rounded-lg px-8">
+                    Get Started
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -207,9 +302,11 @@ export default function LandingPage() {
                   placeholder="Paste GitHub repository URL..." 
                   className="w-full bg-secondary/30 border-border rounded-lg py-6 pl-10 pr-32 text-sm focus-visible:ring-primary/20"
                 />
-                <Button className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6" size="sm">
-                  Explore
-                </Button>
+                <Link href="/codebase">
+                  <Button className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6" size="sm">
+                    Explore
+                  </Button>
+                </Link>
               </div>
               <p className="text-[10px] text-muted-foreground mt-3 ml-1">Example: https://github.com/facebook/react</p>
             </div>
@@ -389,11 +486,12 @@ export default function LandingPage() {
               that stays perfectly in sync with every change. No more stale docs. Ever.
             </p>
 
-            <Button size="lg" className="h-16 px-8 rounded-2xl bg-white text-black hover:bg-white/90 group">
-              <Sparkles className="w-6 h-6 mr-3 text-blue-600" />
-              Get Started
-              <ArrowUpRight className="w-5 h-5 ml-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-            </Button>
+            <Link href="/codebase" onClick={handleGetStarted}>
+              <Button size="lg" className="h-16 px-8 rounded-2xl bg-white text-black hover:bg-white/90 group">
+                Get Started
+                <ArrowUpRight className="w-5 h-5 ml-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

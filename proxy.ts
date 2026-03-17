@@ -64,7 +64,7 @@ export default async function proxy(request: NextRequest) {
   // 3. Handle Private Routes
   if (!isLoggedIn && !isPublicRoute) {
     // Redirect unauthenticated users to sign-in
-    return NextResponse.redirect(new URL("/sign-in", nextUrl));
+    return NextResponse.redirect(new URL("/", nextUrl));
   }
 
   // 4. Pass session user info if authenticated
