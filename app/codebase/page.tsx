@@ -28,6 +28,7 @@ import {
   AvatarImage, 
   AvatarFallback 
 } from '@/components/ui/avatar';
+import { UserMenu } from '@/components/UserMenu';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +71,7 @@ import { fetchGithubRepositoriesAction } from "@/actions/github";
 import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from "sonner";
+import { CodebaseRow } from '@/components/CodebaseRow';
 
 export default function CodebasePage() {
   const [scrolled, setScrolled] = React.useState(false);
@@ -129,6 +131,10 @@ export default function CodebasePage() {
     }
   };
 
+  const removeCodebase = (id: string) => {
+    setUserCodebases(prev => prev.filter(cb => cb.id !== id));
+  };
+
   React.useEffect(() => {
     if (session) {
       fetchUserCodebases();
@@ -174,15 +180,7 @@ export default function CodebasePage() {
     });
   };
 
-  const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.refresh();
-        },
-      },
-    });
-  };
+
 
   const handleIndex = async (repoFullName: string) => {
     setIsIndexing(true);
@@ -329,45 +327,7 @@ export default function CodebasePage() {
                 <span className="text-xs font-medium">Login</span>
               </Button>
             ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="size-9 p-0 rounded-full overflow-hidden border border-border/50 hover:bg-secondary/50 transition-all hover:scale-105 active:scale-95">
-                    <Avatar className="h-full w-full">
-                      <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
-                      <AvatarFallback className="text-xs bg-primary/10">{session.user.name?.[0] || "U"}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-2 p-1.5 border-border/50 backdrop-blur-xl bg-background/95 shadow-2xl shadow-primary/5">
-                  <DropdownMenuLabel className="font-normal px-2 py-2">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-semibold leading-none">{session.user.name}</p>
-                      <p className="text-[10px] leading-none text-muted-foreground">{session.user.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-border/50" />
-                  <DropdownMenuItem onClick={() => router.push('/codebase')} className="cursor-pointer rounded-md focus:bg-secondary/80 py-2">
-                    <LayoutDashboard className="mr-2 h-4 w-4 opacity-70" />
-                    <span className="text-sm font-medium">Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-secondary/80 py-2">
-                    <User className="mr-2 h-4 w-4 opacity-70" />
-                    <span className="text-sm font-medium">Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-secondary/80 py-2">
-                    <Settings className="mr-2 h-4 w-4 opacity-70" />
-                    <span className="text-sm font-medium">Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-border/50" />
-                  <DropdownMenuItem 
-                    className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md py-2" 
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="mr-2 h-4 w-4 opacity-70" />
-                    <span className="text-sm font-medium">Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <UserMenu />
             )}
           </div>
         </div>
@@ -410,7 +370,7 @@ export default function CodebasePage() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4 align-middle">
-                      <Skeleton className="h-3 w-48" />
+                      <Skeleton className="h-3 w-32" />
                     </TableCell>
                     <TableCell className="py-4 align-middle text-right">
                       <div className="flex justify-end">
@@ -457,61 +417,23 @@ export default function CodebasePage() {
               </TableHeader>
               <TableBody className="[&_tr:last-child]:border-0 bg-transparent">
                 {userCodebases.map((cb) => (
-                  <TableRow key={cb.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors group">
-                    <TableCell className="py-4 align-middle">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-background border border-border/50 flex items-center justify-center shadow-sm shrink-0">
-                          <Github className="w-4 h-4 text-primary/70" />
-                        </div>
-                        <Link href={`/codebase/${cb.id}`} className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors cursor-pointer truncate">
-                          {cb.name}
-                        </Link>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 align-middle">
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {cb.description || "No description provided."}
-                      </p>
-                    </TableCell>
-                    <TableCell className="py-4 align-middle text-right">
-                      <span className="text-[10px] font-medium text-muted-foreground/60">
-                        {formatDistanceToNow(new Date(cb.createdAt), { addSuffix: true })}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-4 align-middle text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40 p-1 border-border/50 bg-background/95 backdrop-blur-xl">
-                          <DropdownMenuItem 
-                            className="cursor-pointer rounded-md focus:bg-secondary/80 py-2"
-                            onClick={() => {
-                              setSelectedCodebase(cb);
-                              setNewName(cb.name);
-                              setIsRenameDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="mr-2 h-3.5 w-3.5 opacity-70" />
-                            <span className="text-xs font-medium">Rename</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-border/50" />
-                          <DropdownMenuItem 
-                            className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md py-2"
-                            onClick={() => {
-                              setSelectedCodebase(cb);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-3.5 w-3.5 opacity-70" />
-                            <span className="text-xs font-medium">Delete</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                  <CodebaseRow 
+                    key={cb.id} 
+                    codebase={cb} 
+                    onRename={(cb) => {
+                      setSelectedCodebase(cb);
+                      setNewName(cb.name);
+                      setIsRenameDialogOpen(true);
+                    }}
+                    onDelete={(cb) => {
+                      setSelectedCodebase(cb);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    removeCodebase={removeCodebase}
+                    onStatusChange={(id, newStatus) => {
+                      setUserCodebases(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+                    }}
+                  />
                 ))}
               </TableBody>
             </Table>

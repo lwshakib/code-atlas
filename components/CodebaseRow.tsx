@@ -1,0 +1,212 @@
+"use client";
+
+import React from 'react';
+import { 
+  Github, 
+  MoreVertical, 
+  Pencil, 
+  Trash2, 
+  X, 
+  RefreshCw,
+
+  AlertCircle,
+  CheckCircle2,
+  Clock
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TableCell, TableRow } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+import { useInngestSubscription } from "@inngest/realtime/hooks";
+import { fetchRealtimeSubscriptionToken, cancelAndCleanupIndexingAction, retryIndexingAction } from "@/actions/codebases";
+import { toast } from "sonner";
+
+interface CodebaseRowProps {
+  codebase: any;
+  onRename: (cb: any) => void;
+  onDelete: (cb: any) => void;
+  removeCodebase: (id: string) => void;
+  onStatusChange?: (id: string, newStatus: string) => void;
+}
+
+export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onStatusChange }: CodebaseRowProps) {
+  const [currentStatus, setCurrentStatus] = React.useState(codebase.status);
+  const [isActionLoading, setIsActionLoading] = React.useState(false);
+
+  // Subscribe to status updates for this codebase
+  const { latestData } = useInngestSubscription({
+    refreshToken: () => fetchRealtimeSubscriptionToken(codebase.id),
+  });
+
+  React.useEffect(() => {
+    if (latestData?.data?.status) {
+      setCurrentStatus(latestData.data.status);
+      onStatusChange?.(codebase.id, latestData.data.status);
+    }
+  }, [latestData, codebase.id, onStatusChange]);
+
+  const handleCancel = async () => {
+    setIsActionLoading(true);
+    const promise = cancelAndCleanupIndexingAction(codebase.id);
+    toast.promise(promise, {
+      loading: "Cancelling and cleaning up...",
+      success: "Indexing cancelled and codebase removed",
+      error: (err) => err.message || "Failed to cancel indexing",
+    });
+    
+    try {
+      const result = await promise;
+      if (result.success) {
+        removeCodebase(codebase.id); // Remove from UI
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    setIsActionLoading(true);
+    const promise = retryIndexingAction(codebase.id);
+    toast.promise(promise, {
+      loading: "Restarting indexing...",
+      success: "Indexing restarted",
+      error: (err) => err.message || "Failed to restart indexing",
+    });
+
+    try {
+      const result = await promise;
+      if (result.success) {
+        setCurrentStatus("PENDING");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch (currentStatus) {
+      case "INDEXING":
+        return <RefreshCw className="w-3 h-3 animate-spin text-primary" />;
+      case "PENDING":
+        return <Clock className="w-3 h-3 text-muted-foreground animate-pulse" />;
+      case "COMPLETED":
+        return <CheckCircle2 className="w-3 h-3 text-emerald-500" />;
+      case "FAILED":
+        return <AlertCircle className="w-3 h-3 text-destructive" />;
+      default:
+        return null;
+    }
+  };
+
+  const showCancel = currentStatus === "PENDING" || currentStatus === "INDEXING";
+  const showRetry = currentStatus === "FAILED";
+
+  return (
+    <TableRow className="border-b border-border/50 hover:bg-secondary/10 transition-colors group">
+      <TableCell className="py-4 align-middle">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-background border border-border/50 flex items-center justify-center shadow-sm shrink-0">
+            <Github className="w-4 h-4 text-primary/70" />
+          </div>
+          <Link href={`/codebase/${codebase.id}`} className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors cursor-pointer truncate">
+            {codebase.name}
+          </Link>
+        </div>
+      </TableCell>
+      <TableCell className="py-4 align-middle">
+        <p className="text-xs text-muted-foreground line-clamp-1" title={codebase.description || "No description provided."}>
+          {codebase.description 
+            ? codebase.description.split(' ').slice(0, 10).join(' ') + (codebase.description.split(' ').length > 10 ? '...' : '')
+            : "No description provided."}
+        </p>
+      </TableCell>
+      <TableCell className="py-4 align-middle text-right">
+        <span className="text-[10px] font-medium text-muted-foreground/60">
+          {formatDistanceToNow(new Date(codebase.createdAt), { addSuffix: true })}
+        </span>
+      </TableCell>
+      <TableCell className="py-4 align-middle text-right">
+        <div className="flex items-center justify-end gap-2">
+          {/* Pending or Indexing: Show simple Cancel (X) icon */}
+          {(currentStatus === "PENDING" || currentStatus === "INDEXING") && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all"
+              onClick={handleCancel}
+              disabled={isActionLoading}
+              title="Cancel Indexing"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+
+          {/* Failed: Show Retry and Delete buttons */}
+          {currentStatus === "FAILED" && (
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 rounded-lg text-[10px] font-bold gap-1 border-border/50"
+                onClick={handleRetry}
+                disabled={isActionLoading}
+              >
+                <RefreshCw className={`w-3 h-3 ${isActionLoading ? 'animate-spin' : ''}`} />
+                Retry
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={() => onDelete(codebase)}
+                disabled={isActionLoading}
+                title="Delete Codebase"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Completed: Show Three-dot action button */}
+          {currentStatus === "COMPLETED" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 p-1 border-border/50 bg-background/95 backdrop-blur-xl">
+                <DropdownMenuItem 
+                  className="cursor-pointer rounded-md focus:bg-secondary/80 py-2"
+                  onClick={() => onRename(codebase)}
+                >
+                  <Pencil className="mr-2 h-3.5 w-3.5 opacity-70" />
+                  <span className="text-xs font-medium">Rename</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem 
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md py-2"
+                  onClick={() => onDelete(codebase)}
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5 opacity-70" />
+                  <span className="text-xs font-medium">Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}

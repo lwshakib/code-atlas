@@ -1,31 +1,46 @@
 import { GLM_WORKER_URL, CLOUDFLARE_API_KEY } from "@/lib/env";
+import { executeTool } from "@/lib/ai-tools";
 
 /**
- * Creates a readable stream from the GLM-4.7-Flash worker.
+ * Creates a readable stream from the GLM-4.7-Flash worker with tool support.
  * 
- * @param messages - Array of message objects { role, content }
+ * @param messages - Array of message objects { role, content, ... }
+ * @param options - tools, tool_choice, etc.
  * @param signal - AbortSignal to cancel the request
  * @returns A ReadableStream that emits text chunks
  */
-export async function streamTextFromGLM(messages: { role: string; content: string }[], signal?: AbortSignal): Promise<ReadableStream> {
-  const response = await fetch(GLM_WORKER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${CLOUDFLARE_API_KEY}`
-    },
-    body: JSON.stringify({
-      messages,
-      stream: true
-    }),
-    signal
-  });
+export async function streamTextFromGLM(
+  messages: any[], 
+  options: { tools?: any[]; tool_choice?: string; codebaseId?: string } = {},
+  signal?: AbortSignal
+): Promise<ReadableStream> {
+  const currentMessages = [...messages];
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`GLM Worker Error: ${response.status} - ${errorText}`);
-  }
+  // Logic to handle tool calls and potentially multi-turn before streaming text
+  const getInitialStream = async () => {
+    const response = await fetch(GLM_WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CLOUDFLARE_API_KEY}`
+      },
+      body: JSON.stringify({
+        messages: currentMessages,
+        tools: options.tools,
+        tool_choice: options.tool_choice,
+        stream: true
+      }),
+      signal
+    });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`GLM Worker Error: ${response.status} - ${errorText}`);
+    }
+    return response;
+  };
+
+  const response = await getInitialStream();
   const reader = response.body?.getReader();
   const decoder = new TextDecoder();
 
@@ -36,30 +51,94 @@ export async function streamTextFromGLM(messages: { role: string; content: strin
         return;
       }
 
+      let currentReader = reader;
+      let toolCalls: any[] = [];
+      let isFirstPass = true;
+
       try {
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          const { done, value } = await currentReader.read();
+
+          if (done) {
+            // Check if we accumulated tool calls during the pass
+            if (toolCalls.length > 0) {
+              const assistantMessage = { role: "assistant", tool_calls: toolCalls };
+              currentMessages.push(assistantMessage);
+
+              for (const tc of toolCalls) {
+                try {
+                  const result = await executeTool(
+                    tc.function.name, 
+                    JSON.parse(tc.function.arguments),
+                    options.codebaseId || ""
+                  );
+                  currentMessages.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify(result)
+                  });
+                } catch (e) {
+                  currentMessages.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: (e as Error).message })
+                  });
+                }
+              }
+
+              // Re-fetch with tools results
+              const nextRes = await fetch(GLM_WORKER_URL, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${CLOUDFLARE_API_KEY}`
+                },
+                body: JSON.stringify({
+                  messages: currentMessages,
+                  tools: options.tools,
+                  stream: true
+                }),
+                signal
+              });
+
+              if (!nextRes.ok) throw new Error("GLM re-fetch failed after tool call");
+              
+              const nextReader = nextRes.body?.getReader();
+              if (!nextReader) break;
+              currentReader = nextReader;
+              toolCalls = []; // Reset for next potential round
+              continue;
+            }
+            break; 
+          }
 
           const chunk = decoder.decode(value);
           const lines = chunk.split("\n");
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") {
-                controller.close();
-                return;
-              }
+              const dataStr = line.slice(6).trim();
+              if (dataStr === "[DONE]") continue;
 
               try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || "";
-                if (content) {
-                  controller.enqueue(new TextEncoder().encode(content));
+                const parsed = JSON.parse(dataStr);
+                const delta = parsed.choices?.[0]?.delta;
+                
+                if (delta?.tool_calls) {
+                  // Buffer tool calls instead of streaming them
+                  for (const tc of delta.tool_calls) {
+                    if (!toolCalls[tc.index]) {
+                      toolCalls[tc.index] = { id: tc.id, type: "function", function: { name: "", arguments: "" } };
+                    }
+                    if (tc.id) toolCalls[tc.index].id = tc.id;
+                    if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name;
+                    if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
+                  }
+                } else if (delta?.content) {
+                  controller.enqueue(new TextEncoder().encode(delta.content));
                 }
               } catch (e) {
-                console.error("Error parsing GLM stream chunk:", e, data);
+                console.error("Error parsing GLM stream chunk:", e, dataStr);
               }
             }
           }
@@ -71,9 +150,10 @@ export async function streamTextFromGLM(messages: { role: string; content: strin
           controller.error(error);
         }
       } finally {
-        reader.releaseLock();
+        currentReader.releaseLock();
         controller.close();
       }
     }
   });
 }
+

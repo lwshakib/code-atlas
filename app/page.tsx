@@ -35,6 +35,7 @@ import {
   AvatarImage, 
   AvatarFallback 
 } from '@/components/ui/avatar';
+import { UserMenu } from '@/components/UserMenu';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,15 +158,7 @@ export default function LandingPage() {
     });
   };
 
-  const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.refresh();
-        },
-      },
-    });
-  };
+
 
   const handleGetStarted = (e: React.MouseEvent) => {
     if (!session) {
@@ -211,45 +204,7 @@ export default function LandingPage() {
                 <span className="text-xs font-medium">Login with GitHub</span>
               </Button>
             ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="size-10 p-0 rounded-full overflow-hidden border border-border/50 hover:bg-secondary/50">
-                    <Avatar size="default">
-                      <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
-                      <AvatarFallback className="text-xs">{session.user.name?.[0] || "U"}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-2">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{session.user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/codebase')} className="cursor-pointer">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer" 
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <UserMenu />
             )}
           </div>
         </div>

@@ -5,117 +5,244 @@ import { getNeo4jDriver } from "@/lib/neo4j";
 import { getPineconeIndex } from "@/lib/pinecone";
 import { INDEXING_BATCH_SIZE, MAX_EMBEDDING_TEXT_LENGTH } from "@/lib/constants";
 import { generateEmbeddings, generateBatchEmbeddings } from "@/llm/embeddings";
-// import { generateTextFromGLM } from "@/llm/generateText"; // Removed logic for summary generation as requested
+import { codebaseChannel } from "./channels";
+import { generateObjectFromGLM } from "@/llm/generateObject";
+import { z } from "zod";
 
 export const helloWorld = inngest.createFunction(
-  { id: "hello-world", triggers: [{ event: "test/hello.world" }] },
+  { id: "hello-world" },
+  { event: "test/hello.world" },
   async ({ event, step }) => {
     await step.sleep("wait-a-moment", "1s");
     return { message: `Hello ${event.data.email}!` };
   },
 );
 
+
 export const indexCodebase = inngest.createFunction(
-  { id: "index-codebase", triggers: [{ event: "codebase/index.start" }] },
-  async ({ event, step }) => {
+  { 
+    id: "index-codebase", 
+    cancelOn: [
+      {
+        event: "codebase/index.cancel",
+        match: "data.codebaseId",
+      }
+    ]
+  },
+  { event: "codebase/index.start" },
+  // @ts-ignore
+  async ({ event, step, publish }) => {
+
     const { repoFullName, codebaseId, accessToken, userId } = event.data;
-    const [owner, repo] = repoFullName.split("/");
-    const octokit = new Octokit({ auth: accessToken });
 
-    // 1. Fetch Repository Tree
-    const treeData = await step.run("fetch-repo-tree", async () => {
-      const { data: repoInfo } = await octokit.rest.repos.get({ owner, repo });
-      const { data } = await octokit.rest.git.getTree({
-        owner,
-        repo,
-        tree_sha: repoInfo.default_branch,
-        recursive: "true",
+    try {
+      const [owner, repo] = repoFullName.split("/");
+      const octokit = new Octokit({ auth: accessToken });
+
+      // Update status to INDEXING
+      await step.run("update-status-indexing", async () => {
+        await prisma.codebase.update({
+          where: { id: codebaseId },
+          data: { status: "INDEXING" },
+        });
+        await publish(codebaseChannel(codebaseId).status({ status: "INDEXING" }));
       });
-      return data.tree.filter(
-        (item) => item.type === "blob" && isRelevantFile(item.path || "")
-      );
-    });
 
-    // 2. Process Files in Batches (using configured INDEXING_BATCH_SIZE)
-    const BATCH_SIZE = INDEXING_BATCH_SIZE;
+      // 1. Fetch Repository Tree
+      const treeData = await step.run("fetch-repo-tree", async () => {
+        const { data: repoInfo } = await octokit.rest.repos.get({ owner, repo });
+        const { data } = await octokit.rest.git.getTree({
+          owner,
+          repo,
+          tree_sha: repoInfo.default_branch,
+          recursive: "true",
+        });
+        return data.tree.filter(
+          (item) => item.type === "blob" && isRelevantFile(item.path || "")
+        );
+      });
 
-    for (let i = 0; i < treeData.length; i += BATCH_SIZE) {
-      const batch = treeData.slice(i, i + BATCH_SIZE);
-      
-      await step.run(`process-batch-${i / BATCH_SIZE}`, async () => {
-        const driver = getNeo4jDriver();
-        const pineconeIndex = getPineconeIndex();
+      // 2. Process Files in Batches (using configured INDEXING_BATCH_SIZE)
+      const BATCH_SIZE = INDEXING_BATCH_SIZE;
+
+      for (let i = 0; i < treeData.length; i += BATCH_SIZE) {
+        const batch = treeData.slice(i, i + BATCH_SIZE);
         
-        // A. Fetch all file contents in parallel within the batch
-        const fileContents = await Promise.all(
-          batch.map(async (file) => {
-            try {
+        await step.run(`process-batch-${i / BATCH_SIZE}`, async () => {
+          const driver = getNeo4jDriver();
+          const pineconeIndex = getPineconeIndex();
+          
+          // A. Fetch all file contents in parallel within the batch
+          const fileContents = await Promise.all(
+            batch.map(async (file) => {
+              try {
+                const { data: contentData } = await octokit.rest.git.getBlob({
+                  owner,
+                  repo,
+                  file_sha: file.sha!,
+                });
+                const content = Buffer.from(contentData.content, "base64").toString("utf-8");
+                return { file, content, text: `File: ${file.path}\n\nCode:\n${content.substring(0, MAX_EMBEDDING_TEXT_LENGTH)}` };
+              } catch (err) {
+                console.error(`Error fetching ${file.path}:`, err);
+                return null;
+              }
+            })
+          );
+
+          const validFiles = fileContents.filter((f): f is NonNullable<typeof f> => f !== null);
+          if (validFiles.length === 0) return;
+
+          // B. Generate Embeddings in BATCH (Significant cost/performance improvement)
+          const embeddings = await generateBatchEmbeddings(validFiles.map(f => f.text));
+
+          const pineconeRecords: any[] = [];
+          const session = driver.session();
+
+          try {
+            for (let j = 0; j < validFiles.length; j++) {
+              const { file, content } = validFiles[j];
+              const embedding = embeddings[j];
+
+              pineconeRecords.push({
+                id: `${codebaseId}:${file.path}`,
+                values: embedding,
+                metadata: {
+                  codebaseId,
+                  path: file.path,
+                  contentSnippet: content.substring(0, 200),
+                },
+              });
+
+              // Sync to Neo4j
+              await session.executeWrite((tx) =>
+                tx.run(
+                  `
+                  MERGE (c:Codebase {id: $codebaseId})
+                  MERGE (f:File {path: $path, codebaseId: $codebaseId})
+                  MERGE (f)-[:BELONGS_TO]->(c)
+                  `,
+                  { codebaseId, path: file.path }
+                )
+              );
+            }
+
+            // C. Batched Sync to Pinecone
+            if (pineconeRecords.length > 0) {
+              await pineconeIndex.upsert({
+                records: pineconeRecords
+              });
+            }
+          } finally {
+            await session.close();
+          }
+        });
+      }
+
+      // 3. Generate Documentation and Questions
+      await step.run("generate-docs-and-questions", async () => {
+        // Collect key context: tree structure + important files
+        const importantFileNames = ["package.json", "README.md", "next.config.js", "next.config.ts", "prisma/schema.prisma", "docker-compose.yml", "tsconfig.json"];
+        
+        const contextFiles = await Promise.all(
+          treeData
+            .filter(f => importantFileNames.includes(f.path?.split('/').pop() || ""))
+            .map(async (f) => {
               const { data: contentData } = await octokit.rest.git.getBlob({
                 owner,
                 repo,
-                file_sha: file.sha!,
+                file_sha: f.sha!,
               });
               const content = Buffer.from(contentData.content, "base64").toString("utf-8");
-              return { file, content, text: `File: ${file.path}\n\nCode:\n${content.substring(0, MAX_EMBEDDING_TEXT_LENGTH)}` };
-            } catch (err) {
-              console.error(`Error fetching ${file.path}:`, err);
-              return null;
-            }
-          })
+              return `File: ${f.path}\nContent:\n${content.substring(0, 2000)}`;
+            })
         );
 
-        const validFiles = fileContents.filter((f): f is NonNullable<typeof f> => f !== null);
-        if (validFiles.length === 0) return;
+        const treeContext = treeData.map(f => f.path).slice(0, 100).join("\n"); // Limit tree context
 
-        // B. Generate Embeddings in BATCH (Significant cost/performance improvement)
-        const embeddings = await generateBatchEmbeddings(validFiles.map(f => f.text));
+        const prompt = `Analyze this repository: ${repoFullName}\n\nFiles present (partial):\n${treeContext}\n\nImportant File Contents:\n${contextFiles.join("\n\n")}\n\nGenerate a comprehensive documentation structure and a list of 20+ insightful questions about this codebase.`;
 
-        const pineconeRecords: any[] = [];
-        const session = driver.session();
+        const result = await generateObjectFromGLM({
+          messages: [
+            { 
+              role: "system", 
+              content: "You are a lead software engineer. Your task is to generate developer documentation and interactive questions for a repository. The documentation should be high-quality Markdown. The questions should be specific to the codebase to help users understand how it works." 
+            },
+            { role: "user", content: prompt }
+          ],
+          outputSchema: z.object({
+            pages: z.array(z.object({
+              title: z.string(),
+              content: z.string(),
+              subsections: z.array(z.object({
+                title: z.string(),
+                content: z.string()
+              }))
+            })),
+            questions: z.array(z.string())
+          })
+        });
 
-        try {
-          for (let j = 0; j < validFiles.length; j++) {
-            const { file, content } = validFiles[j];
-            const embedding = embeddings[j];
+        // Save generated data to DB
+        for (let i = 0; i < result.pages.length; i++) {
+          const page = result.pages[i];
+          const createdPage = await prisma.docPage.create({
+            data: {
+              title: page.title,
+              content: page.content,
+              order: i,
+              codebaseId,
+            }
+          });
 
-            pineconeRecords.push({
-              id: `${codebaseId}:${file.path}`,
-              values: embedding,
-              metadata: {
+          if (page.subsections.length > 0) {
+            await prisma.docPage.createMany({
+              data: page.subsections.map((sub, subIdx) => ({
+                title: sub.title,
+                content: sub.content,
+                order: subIdx,
                 codebaseId,
-                path: file.path,
-                contentSnippet: content.substring(0, 200),
-              },
-            });
-
-            // Sync to Neo4j
-            await session.executeWrite((tx) =>
-              tx.run(
-                `
-                MERGE (c:Codebase {id: $codebaseId})
-                MERGE (f:File {path: $path, codebaseId: $codebaseId})
-                MERGE (f)-[:BELONGS_TO]->(c)
-                `,
-                { codebaseId, path: file.path }
-              )
-            );
-          }
-
-          // C. Batched Sync to Pinecone
-          if (pineconeRecords.length > 0) {
-            await pineconeIndex.upsert({
-              records: pineconeRecords
+                parentId: createdPage.id
+              }))
             });
           }
-        } finally {
-          await session.close();
         }
-      });
-    }
 
-    return { success: true, processedCount: treeData.length };
+        await prisma.recommendation.createMany({
+          data: result.questions.map(q => ({
+            text: q,
+            codebaseId
+          }))
+        });
+      });
+
+      // Finalize status to COMPLETED
+      await step.run("finalize-indexing", async () => {
+        await prisma.codebase.update({
+          where: { id: codebaseId },
+          data: { status: "COMPLETED" },
+        });
+        await publish(codebaseChannel(codebaseId).status({ status: "COMPLETED" }));
+      });
+
+      return { success: true, processedCount: treeData.length };
+    } catch (error: any) {
+      console.error(`Index codebase error for ${codebaseId}:`, error);
+      await step.run("handle-failure", async () => {
+        await prisma.codebase.update({
+          where: { id: codebaseId },
+          data: { status: "FAILED" },
+        });
+        await publish(codebaseChannel(codebaseId).status({ 
+          status: "FAILED",
+          message: error.message || "An unknown error occurred"
+        }));
+      });
+      throw error;
+    }
   }
 );
+
 
 function isRelevantFile(path: string): boolean {
   const ignoredExtensions = [

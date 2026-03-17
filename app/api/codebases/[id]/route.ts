@@ -7,8 +7,9 @@ import { getPineconeIndex } from "@/lib/pinecone";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -19,7 +20,8 @@ export async function PATCH(
 
   try {
     const { name } = await req.json();
-    const { id } = params;
+    const { id } = await params;
+
 
     const codebase = await prisma.codebase.findUnique({
       where: { id },
@@ -43,8 +45,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -54,7 +57,8 @@ export async function DELETE(
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
+
 
     const codebase = await prisma.codebase.findUnique({
       where: { id },
@@ -103,5 +107,54 @@ export async function DELETE(
   } catch (error: any) {
     console.error("API DELETE /api/codebases/[id] error:", error);
     return NextResponse.json({ error: "Failed to delete codebase" }, { status: 500 });
+  }
+}
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+
+    const codebase = await prisma.codebase.findUnique({
+      where: { id },
+      include: {
+        docPages: {
+          orderBy: { order: "asc" },
+          include: {
+            children: {
+              orderBy: { order: "asc" }
+            }
+          }
+        },
+        recommendations: true
+      }
+    });
+
+    if (!codebase || codebase.userId !== session.user.id) {
+      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+    }
+
+    // Filter to only return top-level pages
+    const topLevelPages = codebase.docPages.filter(p => !p.parentId);
+
+    return NextResponse.json({ 
+      success: true, 
+      data: {
+        ...codebase,
+        docPages: topLevelPages
+      } 
+    });
+  } catch (error: any) {
+    console.error("API GET /api/codebases/[id] error:", error);
+    return NextResponse.json({ error: "Failed to fetch codebase" }, { status: 500 });
   }
 }
