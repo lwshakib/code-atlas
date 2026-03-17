@@ -67,7 +67,6 @@ import {
   Trash2
 } from 'lucide-react';
 import { fetchGithubRepositoriesAction } from "@/actions/github";
-import { startIndexingAction } from "@/actions/indexing";
 import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from "sonner";
@@ -190,7 +189,16 @@ export default function CodebasePage() {
     toast.loading("Starting codebase indexing...", { id: "indexing" });
     
     try {
-      const result = await startIndexingAction(repoFullName);
+      const response = await fetch('/api/codebases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ repoFullName }),
+      });
+      
+      const result = await response.json();
+      
       if (result.success) {
         toast.success("Codebase indexed successfully!", { id: "indexing" });
         setIsNewCodebaseOpen(false);

@@ -78,9 +78,17 @@ model Codebase {
   description String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      CodebaseStatus @default(PENDING)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@map("codebase")
+}
+
+enum CodebaseStatus {
+  PENDING
+  INDEXING
+  COMPLETED
+  FAILED
 }

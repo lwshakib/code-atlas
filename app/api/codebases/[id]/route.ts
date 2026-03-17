@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getNeo4jDriver } from "@/lib/neo4j";
+import { getPineconeIndex } from "@/lib/pinecone";
 
 export async function PATCH(
   req: Request,
@@ -62,6 +64,37 @@ export async function DELETE(
       return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
     }
 
+    // 1. Delete from Pinecone (Vector DB)
+    try {
+      const pineconeIndex = getPineconeIndex();
+      await pineconeIndex.deleteMany({
+        filter: { codebaseId: { $eq: id } }
+      });
+    } catch (pcError) {
+      console.error("Failed to delete from Pinecone:", pcError);
+      // Continue to ensure other deletions are attempted
+    }
+
+    // 2. Delete from Neo4j (Graph DB)
+    try {
+      const driver = getNeo4jDriver();
+      const neoSession = driver.session();
+      await neoSession.executeWrite(tx => 
+        tx.run(
+          `
+          MATCH (c:Codebase {id: $id})
+          OPTIONAL MATCH (f:File {codebaseId: $id})
+          DETACH DELETE c, f
+          `,
+          { id }
+        )
+      );
+      await neoSession.close();
+    } catch (neoError) {
+      console.error("Failed to delete from Neo4j:", neoError);
+    }
+
+    // 3. Delete from Postgres (Primary DB)
     await prisma.codebase.delete({
       where: { id },
     });
