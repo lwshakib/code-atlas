@@ -55,8 +55,10 @@ import {
   Search
 } from 'lucide-react';
 import { fetchGithubRepositoriesAction } from "@/actions/github";
+import { startIndexingAction } from "@/actions/indexing";
 import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from "sonner";
 
 export default function CodebasePage() {
   const [scrolled, setScrolled] = React.useState(false);
@@ -67,9 +69,12 @@ export default function CodebasePage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isLoadingRepos, setIsLoadingRepos] = React.useState(false);
   const [isFetchingMore, setIsFetchingMore] = React.useState(false);
+  const [isIndexing, setIsIndexing] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(true);
   const [repoError, setRepoError] = React.useState<string | null>(null);
+  const [userCodebases, setUserCodebases] = React.useState<any[]>([]);
+  const [isLoadingCodebases, setIsLoadingCodebases] = React.useState(true);
   
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   
@@ -90,6 +95,27 @@ export default function CodebasePage() {
     }
     setIsLoadingRepos(false);
   };
+
+  const fetchUserCodebases = async () => {
+    setIsLoadingCodebases(true);
+    try {
+      const response = await fetch('/api/codebases');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setUserCodebases(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user codebases:", error);
+    } finally {
+      setIsLoadingCodebases(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (session) {
+      fetchUserCodebases();
+    }
+  }, [session]);
 
   const loadMore = async () => {
     if (isFetchingMore || !hasMore || searchQuery) return;
@@ -140,6 +166,37 @@ export default function CodebasePage() {
     });
   };
 
+  const handleIndex = async (repoFullName: string) => {
+    setIsIndexing(true);
+    toast.loading("Starting codebase indexing...", { id: "indexing" });
+    
+    try {
+      const result = await startIndexingAction(repoFullName);
+      if (result.success) {
+        toast.success("Codebase indexed successfully!", { id: "indexing" });
+        setIsNewCodebaseOpen(false);
+        fetchUserCodebases();
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to index codebase", { id: "indexing" });
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred", { id: "indexing" });
+    } finally {
+      setIsIndexing(false);
+    }
+  };
+
+  const handleUrlSubmit = () => {
+    if (!repoUrl) return;
+    const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+    if (match) {
+      handleIndex(match[1]);
+    } else {
+      toast.error("Invalid GitHub URL");
+    }
+  };
+
   React.useEffect(() => {
     const handleWindowScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -172,15 +229,6 @@ export default function CodebasePage() {
 
           {/* Right: Actions */}
           <div className="flex items-center justify-end w-1/3 gap-3">
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="hidden sm:flex items-center h-9 px-6 rounded-full bg-white text-black hover:bg-white/90 border-none transition-all shadow-lg shadow-white/5 active:scale-95"
-              onClick={() => !session ? handleSignIn() : setIsNewCodebaseOpen(true)}
-            >
-              <span className="text-xs font-semibold">New Codebase</span>
-            </Button>
-
             {!session ? (
               <Button 
                 variant="outline" 
@@ -235,6 +283,75 @@ export default function CodebasePage() {
           </div>
         </div>
       </nav>
+
+      <main className="pt-24 pb-12 px-6 max-w-screen-2xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">My Codebases</h1>
+            <p className="text-muted-foreground text-sm mt-1">Manage and analyze your synchronized repositories.</p>
+          </div>
+          <Button 
+            onClick={() => !session ? handleSignIn() : setIsNewCodebaseOpen(true)}
+            size="sm"
+            className="rounded-full h-10 px-6 gap-2 bg-white text-black hover:bg-white/90 border-none transition-all shadow-lg shadow-white/5 active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-xs font-semibold">New Codebase</span>
+          </Button>
+        </div>
+
+        {isLoadingCodebases ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48 rounded-[2.5rem]" />
+            ))}
+          </div>
+        ) : userCodebases.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center border border-dashed border-border/50 rounded-[3rem] bg-secondary/5">
+            <div className="w-16 h-16 rounded-3xl bg-primary/5 flex items-center justify-center mb-6">
+              <LayoutDashboard className="w-8 h-8 text-primary/40" />
+            </div>
+            <h2 className="text-xl font-semibold">No codebases yet</h2>
+            <p className="text-muted-foreground text-sm mt-2 max-w-xs mx-auto">
+              Index your first repository to start analyzing and generating insights.
+            </p>
+            <Button 
+              variant="outline"
+              className="mt-8 rounded-full h-10 px-8 border-primary/20 hover:bg-primary/5"
+              onClick={() => !session ? handleSignIn() : setIsNewCodebaseOpen(true)}
+            >
+              Get Started
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userCodebases.map((cb) => (
+              <div key={cb.id} className="group relative p-6 rounded-[2.5rem] border border-border/50 bg-secondary/10 hover:bg-secondary/20 transition-all duration-300">
+                 <div className="flex items-start justify-between mb-4">
+                   <div className="w-10 h-10 rounded-2xl bg-background border border-border/50 flex items-center justify-center shadow-sm">
+                      <Github className="w-5 h-5 text-primary/70" />
+                   </div>
+                   <span className="text-[10px] font-medium text-muted-foreground/60">
+                     Indexed {formatDistanceToNow(new Date(cb.createdAt), { addSuffix: true })}
+                   </span>
+                 </div>
+                 <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{cb.name}</h3>
+                 <p className="text-xs text-muted-foreground line-clamp-2 mt-2 min-h-[2.5rem]">
+                   {cb.description || "No description provided."}
+                 </p>
+                 <div className="mt-6 flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="flex-1 rounded-2xl h-10 text-xs border-border/50 hover:bg-background">
+                      Chat
+                    </Button>
+                    <Button variant="default" size="sm" className="rounded-2xl h-10 px-5 bg-white text-black hover:bg-white/90">
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
 
       {/* New Codebase Dialog */}
       <Dialog open={isNewCodebaseOpen} onOpenChange={handleOpenChange}>
@@ -305,8 +422,13 @@ export default function CodebasePage() {
                         autoFocus
                       />
                       <div className="absolute right-2 top-2">
-                        <Button size="icon" className="h-10 w-10 rounded-lg shadow-md hover:scale-105 active:scale-95 transition-all bg-primary text-primary-foreground">
-                          <ArrowRight className="w-4 h-4" />
+                        <Button 
+                          size="icon" 
+                          className="h-10 w-10 rounded-lg shadow-md hover:scale-105 active:scale-95 transition-all bg-primary text-primary-foreground"
+                          onClick={handleUrlSubmit}
+                          disabled={isIndexing || !repoUrl}
+                        >
+                          {isIndexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                         </Button>
                       </div>
                     </div>
@@ -385,7 +507,8 @@ export default function CodebasePage() {
                           .map((repo) => (
                           <div 
                             key={repo.id} 
-                            className="flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group"
+                            className={`flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group ${isIndexing ? 'opacity-50 pointer-events-none' : ''}`}
+                            onClick={() => handleIndex(repo.full_name)}
                           >
                             <div className="flex items-center gap-3 overflow-hidden">
                               <div className="hidden sm:flex flex-shrink-0 w-8 h-8 rounded-lg bg-background border border-border/50 items-center justify-center shadow-sm group-hover:bg-primary/5 transition-colors">

@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -22,6 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  codebases     Codebase[]
 
   @@unique([email])
   @@map("user")
@@ -73,4 +69,18 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Codebase {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  description String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("codebase")
 }
