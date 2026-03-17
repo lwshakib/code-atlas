@@ -123,18 +123,4 @@
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
-  }
-}
-@layer utilities {
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-  .backface-visible {
-    backface-visibility: visible;
-  }
-  .backface-hidden {
-    backface-visibility: hidden;
-  }
 }
