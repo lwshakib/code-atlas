@@ -74,21 +74,31 @@ export async function startIndexingAction(repoFullName: string) {
     });
 
     // 2. Create Codebase Record in Postgres
-    const codebase = await prisma.codebase.upsert({
-      where: { id: repoInfo.id.toString() },
-      update: {
-        name: repoInfo.name,
-        url: repoInfo.html_url,
-        description: repoInfo.description,
-      },
-      create: {
-        id: repoInfo.id.toString(),
-        name: repoInfo.name,
-        url: repoInfo.html_url,
-        description: repoInfo.description,
+    let codebase = await prisma.codebase.findFirst({
+      where: {
         userId: session.user.id,
+        url: repoInfo.html_url,
       },
     });
+
+    if (codebase) {
+      codebase = await prisma.codebase.update({
+        where: { id: codebase.id },
+        data: {
+          name: repoInfo.name,
+          description: repoInfo.description,
+        },
+      });
+    } else {
+      codebase = await prisma.codebase.create({
+        data: {
+          name: repoInfo.name,
+          url: repoInfo.html_url,
+          description: repoInfo.description,
+          userId: session.user.id,
+        },
+      });
+    }
 
     // 3. Trigger Inngest background job
     // This allows us to handle large repos without timing out the server action

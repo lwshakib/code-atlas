@@ -12,6 +12,15 @@ import {
 import { LogoWithText, Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
 import { 
@@ -52,7 +61,10 @@ import {
   History,
   RefreshCw,
   Lock,
-  Search
+  Search,
+  MoreVertical,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { fetchGithubRepositoriesAction } from "@/actions/github";
 import { startIndexingAction } from "@/actions/indexing";
@@ -75,6 +87,13 @@ export default function CodebasePage() {
   const [repoError, setRepoError] = React.useState<string | null>(null);
   const [userCodebases, setUserCodebases] = React.useState<any[]>([]);
   const [isLoadingCodebases, setIsLoadingCodebases] = React.useState(true);
+  
+  // Rename/Delete states
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedCodebase, setSelectedCodebase] = React.useState<any>(null);
+  const [newName, setNewName] = React.useState("");
+  const [isActionLoading, setIsActionLoading] = React.useState(false);
   
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   
@@ -204,6 +223,68 @@ export default function CodebasePage() {
     window.addEventListener('scroll', handleWindowScroll);
     return () => window.removeEventListener('scroll', handleWindowScroll);
   }, []);
+  
+  const handleRename = async () => {
+    if (!selectedCodebase || !newName.trim()) return;
+    
+    // Save original state for possible rollbacks
+    const originalCodebases = [...userCodebases];
+    const originalName = selectedCodebase.name;
+
+    // Optimistically update the UI
+    setUserCodebases(prev => prev.map(cb => 
+      cb.id === selectedCodebase.id ? { ...cb, name: newName.trim() } : cb
+    ));
+    setIsRenameDialogOpen(false); 
+    
+    try {
+      const response = await fetch(`/api/codebases/${selectedCodebase.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success("Codebase renamed successfully");
+      } else {
+        // Rollback on error
+        setUserCodebases(originalCodebases);
+        toast.error(result.error || "Failed to rename codebase");
+      }
+    } catch (error) {
+      // Rollback on error
+      setUserCodebases(originalCodebases);
+      toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCodebase) return;
+    setIsActionLoading(true);
+    try {
+      const response = await fetch(`/api/codebases/${selectedCodebase.id}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success("Codebase deleted successfully");
+        setIsDeleteDialogOpen(false);
+        fetchUserCodebases();
+      } else {
+        toast.error(result.error || "Failed to delete codebase");
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   const handleOpenChange = (open: boolean) => {
     setIsNewCodebaseOpen(open);
@@ -301,10 +382,42 @@ export default function CodebasePage() {
         </div>
 
         {isLoadingCodebases ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-48 rounded-[2.5rem]" />
-            ))}
+          <div className="w-full border-y border-border/50 bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border/50 hover:bg-transparent bg-secondary/5">
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Name</TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Description</TableHead>
+                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">Indexed</TableHead>
+                  <TableHead className="w-[5%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3].map((i) => (
+                  <TableRow key={i} className="border-b border-border/50">
+                    <TableCell className="py-4 align-middle">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-8 h-8 rounded-xl shrink-0" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 align-middle">
+                      <Skeleton className="h-3 w-48" />
+                    </TableCell>
+                    <TableCell className="py-4 align-middle text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 align-middle text-right">
+                      <div className="flex justify-end">
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : userCodebases.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center border border-dashed border-border/50 rounded-[3rem] bg-secondary/5">
@@ -324,31 +437,76 @@ export default function CodebasePage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userCodebases.map((cb) => (
-              <div key={cb.id} className="group relative p-6 rounded-[2.5rem] border border-border/50 bg-secondary/10 hover:bg-secondary/20 transition-all duration-300">
-                 <div className="flex items-start justify-between mb-4">
-                   <div className="w-10 h-10 rounded-2xl bg-background border border-border/50 flex items-center justify-center shadow-sm">
-                      <Github className="w-5 h-5 text-primary/70" />
-                   </div>
-                   <span className="text-[10px] font-medium text-muted-foreground/60">
-                     Indexed {formatDistanceToNow(new Date(cb.createdAt), { addSuffix: true })}
-                   </span>
-                 </div>
-                 <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{cb.name}</h3>
-                 <p className="text-xs text-muted-foreground line-clamp-2 mt-2 min-h-[2.5rem]">
-                   {cb.description || "No description provided."}
-                 </p>
-                 <div className="mt-6 flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="flex-1 rounded-2xl h-10 text-xs border-border/50 hover:bg-background">
-                      Chat
-                    </Button>
-                    <Button variant="default" size="sm" className="rounded-2xl h-10 px-5 bg-white text-black hover:bg-white/90">
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                 </div>
-              </div>
-            ))}
+          <div className="w-full border-y border-border/50 bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border/50 hover:bg-transparent bg-secondary/5">
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Name</TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Description</TableHead>
+                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">Indexed</TableHead>
+                  <TableHead className="w-[5%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="[&_tr:last-child]:border-0 bg-transparent">
+                {userCodebases.map((cb) => (
+                  <TableRow key={cb.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors group">
+                    <TableCell className="py-4 align-middle">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-background border border-border/50 flex items-center justify-center shadow-sm shrink-0">
+                          <Github className="w-4 h-4 text-primary/70" />
+                        </div>
+                        <Link href={`/codebase/${cb.id}`} className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors cursor-pointer truncate">
+                          {cb.name}
+                        </Link>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 align-middle">
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {cb.description || "No description provided."}
+                      </p>
+                    </TableCell>
+                    <TableCell className="py-4 align-middle text-right">
+                      <span className="text-[10px] font-medium text-muted-foreground/60">
+                        {formatDistanceToNow(new Date(cb.createdAt), { addSuffix: true })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-4 align-middle text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 p-1 border-border/50 bg-background/95 backdrop-blur-xl">
+                          <DropdownMenuItem 
+                            className="cursor-pointer rounded-md focus:bg-secondary/80 py-2"
+                            onClick={() => {
+                              setSelectedCodebase(cb);
+                              setNewName(cb.name);
+                              setIsRenameDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="mr-2 h-3.5 w-3.5 opacity-70" />
+                            <span className="text-xs font-medium">Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border/50" />
+                          <DropdownMenuItem 
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md py-2"
+                            onClick={() => {
+                              setSelectedCodebase(cb);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5 opacity-70" />
+                            <span className="text-xs font-medium">Delete</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </main>
@@ -549,6 +707,83 @@ export default function CodebasePage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-border/40 bg-background/95 backdrop-blur-3xl rounded-3xl shadow-2xl">
+          <div className="p-8">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-xl font-bold tracking-tight">Rename Codebase</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Enter a new name for your codebase.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newName" className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-wider">Name</Label>
+                <Input 
+                  id="newName"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="bg-secondary/20 h-12 border-border/50 focus-visible:ring-primary/20 rounded-xl px-4 text-sm transition-all"
+                  placeholder="New codebase name"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 rounded-xl h-12 text-xs font-bold border-border/50 hover:bg-secondary/50"
+                  onClick={() => setIsRenameDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1 rounded-xl h-12 text-xs font-bold bg-white text-black hover:bg-white/90"
+                  onClick={handleRename}
+                  disabled={isActionLoading || !newName.trim() || newName === selectedCodebase?.name}
+                >
+                  {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-border/40 bg-background/95 backdrop-blur-3xl rounded-3xl shadow-2xl">
+          <div className="p-8">
+            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive mb-6">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogHeader className="mb-6 text-left">
+              <DialogTitle className="text-xl font-bold tracking-tight">Delete Codebase</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                Are you sure you want to delete <span className="font-bold text-foreground">"{selectedCodebase?.name}"</span>? This action cannot be undone and all associated data will be removed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-8">
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-xl h-12 text-xs font-bold border-border/50 hover:bg-secondary/50"
+                onClick={() => setIsDeleteDialogOpen(false)}
+              >
+                Keep it
+              </Button>
+              <Button 
+                variant="destructive"
+                className="flex-1 rounded-xl h-12 text-xs font-bold shadow-lg shadow-destructive/10"
+                onClick={handleDelete}
+                disabled={isActionLoading}
+              >
+                {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
+              </Button>
             </div>
           </div>
         </DialogContent>
