@@ -77,8 +77,8 @@ export default function Home() {
             transition={{ duration: 1, delay: 0.6, ease: "circOut" }}
             className="absolute z-10"
           >
-            <div className="group relative flex h-52 w-52 items-center justify-center rounded-sm border border-blue-500/40 bg-zinc-950/40 shadow-[0_0_20px_rgba(59,130,246,0.1)] backdrop-blur-xl rotate-[-1deg] transition-all hover:border-blue-500/60 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-              <BookOpen className="h-16 w-16 text-blue-400/80 transition-transform group-hover:scale-110" />
+            <div className="group relative flex h-52 w-52 items-center justify-center rounded-sm border border-blue-200 bg-white/40 shadow-[0_0_20px_rgba(59,130,246,0.05)] backdrop-blur-xl rotate-[-1deg] transition-all hover:border-blue-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] dark:border-blue-500/40 dark:bg-zinc-950/40 dark:shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+              <BookOpen className="h-16 w-16 text-blue-600/70 transition-transform group-hover:scale-110 dark:text-blue-400/80" />
               <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-blue-500/5 to-transparent" />
             </div>
           </motion.div>
@@ -90,8 +90,8 @@ export default function Home() {
             transition={{ duration: 1, delay: 0.8, ease: "circOut" }}
             className="absolute z-30"
           >
-            <div className="group relative flex h-64 w-64 items-center justify-center rounded-sm border border-blue-500/60 bg-zinc-950/60 shadow-[0_0_40px_rgba(59,130,246,0.2)] backdrop-blur-2xl rotate-[0.5deg] transition-all hover:border-blue-400 hover:shadow-[0_0_60px_rgba(59,130,246,0.3)]">
-              <Code className="h-24 w-24 text-blue-400 transition-transform group-hover:scale-110" />
+            <div className="group relative flex h-64 w-64 items-center justify-center rounded-sm border border-blue-300 bg-white/60 shadow-[0_0_40px_rgba(59,130,246,0.15)] backdrop-blur-2xl rotate-[0.5deg] transition-all hover:border-blue-500 hover:shadow-[0_0_60px_rgba(59,130,246,0.25)] dark:border-blue-500/60 dark:bg-zinc-950/60 dark:shadow-[0_0_40px_rgba(59,130,246,0.2)]">
+              <Code className="h-24 w-24 text-blue-600 transition-transform group-hover:scale-110 dark:text-blue-400" />
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent" />
             </div>
           </motion.div>
@@ -103,8 +103,8 @@ export default function Home() {
             transition={{ duration: 1, delay: 1, ease: "circOut" }}
             className="absolute z-10"
           >
-            <div className="group relative flex h-48 w-48 items-center justify-center rounded-sm border border-blue-500/40 bg-zinc-950/30 shadow-[0_0_20px_rgba(59,130,246,0.1)] backdrop-blur-md rotate-[1deg] transition-all hover:border-blue-500/60">
-              <MessageSquare className="h-14 w-14 text-blue-400/70 transition-transform group-hover:scale-110" />
+            <div className="group relative flex h-48 w-48 items-center justify-center rounded-sm border border-blue-200 bg-white/30 shadow-[0_0_20px_rgba(59,130,246,0.05)] backdrop-blur-md rotate-[1deg] transition-all hover:border-blue-300 dark:border-blue-500/40 dark:bg-zinc-950/30">
+              <MessageSquare className="h-14 w-14 text-blue-600/60 transition-transform group-hover:scale-110 dark:text-blue-400/70" />
             </div>
           </motion.div>
 
@@ -115,15 +115,16 @@ export default function Home() {
             transition={{ duration: 1, delay: 1.2, ease: "circOut" }}
             className="absolute z-20"
           >
-            <div className="group relative flex h-60 w-60 items-center justify-center rounded-sm border border-blue-600/50 bg-zinc-950/50 shadow-[0_0_40px_rgba(59,130,246,0.2)] backdrop-blur-2xl rotate-[-0.5deg] transition-all hover:border-blue-500 hover:shadow-[0_0_50px_rgba(59,130,246,0.4)]">
-              <Monitor className="h-20 w-20 text-blue-400 transition-transform group-hover:scale-110" />
+            <div className="group relative flex h-60 w-60 items-center justify-center rounded-sm border border-blue-300 bg-white/50 shadow-[0_0_40px_rgba(59,130,246,0.15)] backdrop-blur-2xl rotate-[-0.5deg] transition-all hover:border-blue-500 hover:shadow-[0_0_50px_rgba(59,130,246,0.3)] dark:border-blue-600/50 dark:bg-zinc-950/50 dark:shadow-[0_0_40px_rgba(59,130,246,0.2)]">
+              <Monitor className="h-20 w-20 text-blue-600 transition-transform group-hover:scale-110 dark:text-blue-400" />
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 via-transparent to-transparent" />
             </div>
           </motion.div>
 
           {/* Central Glow Background */}
-          <div className="pointer-events-none absolute h-[400px] w-[600px] rounded-full bg-blue-600/10 blur-[120px]" />
+          <div className="pointer-events-none absolute h-[400px] w-[600px] rounded-full bg-blue-600/5 blur-[120px] dark:bg-blue-600/10" />
         </div>
+
       </main>
 
 
