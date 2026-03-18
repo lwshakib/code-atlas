@@ -181,7 +181,7 @@ export default function LandingPage() {
 
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? 'bg-background/80 backdrop-blur-md border-b border-border py-0' : 'bg-transparent py-2'
+        scrolled ? 'bg-background/80 backdrop-blur-md border-b border-border py-2' : 'bg-transparent py-2'
       }`}>
         <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo */}
