@@ -18,6 +18,7 @@ import { sendIndexingCompleteEmail } from "@/lib/email";
 export const indexCodebase = inngest.createFunction(
   {
     id: "index-codebase",
+    triggers: { event: "codebase/index.start" },
     cancelOn: [
       {
         event: "codebase/index.cancel",
@@ -25,11 +26,8 @@ export const indexCodebase = inngest.createFunction(
       },
     ],
   },
-  { event: "codebase/index.start" },
-  // @ts-expect-error - inngest function event type mismatch in current SDK version
   async ({ event, step, publish }) => {
     const { repoFullName, codebaseId, accessToken } = event.data;
-
     try {
       const [owner, repo] = repoFullName.split("/");
       const octokit = new Octokit({ auth: accessToken });

@@ -7,7 +7,7 @@
       "dependencies": {
         "@base-ui/react": "^1.3.0",
         "@iconify/react": "^6.0.2",
-        "@inngest/realtime": "^0.4.5",
+        "@inngest/realtime": "^0.4.6",
         "@langchain/core": "^1.1.32",
         "@pinecone-database/pinecone": "^7.1.0",
         "@prisma/adapter-pg": "^7.5.0",
@@ -30,7 +30,7 @@
         "date-fns": "^4.1.0",
         "dotenv": "^17.3.1",
         "embla-carousel-react": "^8.6.0",
-        "inngest": "^3.48.1",
+        "inngest": "^4.0.0",
         "input-otp": "^1.4.2",
         "lucide-react": "^0.577.0",
         "media-chrome": "^4.18.0",
@@ -1961,7 +1961,7 @@
 
     "inline-style-parser": ["inline-style-parser@0.2.7", "", {}, "sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA=="],
 
-    "inngest": ["inngest@3.52.7", "", { "dependencies": { "@bufbuild/protobuf": "^2.2.3", "@inngest/ai": "^0.1.3", "@jpwilliams/waitgroup": "^2.1.1", "@opentelemetry/api": "^1.9.0", "@opentelemetry/auto-instrumentations-node": ">=0.66.0 <1.0.0", "@opentelemetry/context-async-hooks": ">=2.0.0 <3.0.0", "@opentelemetry/exporter-trace-otlp-http": ">=0.200.0 <0.300.0", "@opentelemetry/instrumentation": ">=0.200.0 <0.300.0", "@opentelemetry/resources": ">=2.0.0 <3.0.0", "@opentelemetry/sdk-trace-base": ">=2.0.0 <3.0.0", "@standard-schema/spec": "^1.0.0", "@traceloop/instrumentation-anthropic": "^0.20.0", "@types/debug": "^4.1.12", "@types/ms": "~2.1.0", "canonicalize": "^1.0.8", "chalk": "^4.1.2", "cross-fetch": "^4.0.0", "debug": "^4.3.4", "hash.js": "^1.1.7", "json-stringify-safe": "^5.0.1", "ms": "^2.1.3", "serialize-error-cjs": "^0.1.3", "strip-ansi": "^5.2.0", "temporal-polyfill": "^0.2.5", "ulid": "^2.3.0", "zod": "^3.25.0" }, "peerDependencies": { "@sveltejs/kit": ">=1.27.3", "@vercel/node": ">=2.15.9", "aws-lambda": ">=1.0.7", "express": ">=4.19.2", "fastify": ">=4.21.0", "h3": ">=1.8.1", "hono": ">=4.2.7", "koa": ">=2.14.2", "next": ">=12.0.0", "typescript": ">=5.8.0" }, "optionalPeers": ["@sveltejs/kit", "@vercel/node", "aws-lambda", "express", "fastify", "h3", "hono", "koa", "next", "typescript"] }, "sha512-Bj4LttRrNUfVz745MVxQio34QwHzwG7dHiAI6DmRIZqfRjQ6tdV4mg70xzbRmwsaXgN+iboa+SXP6ILkziUf4g=="],
+    "inngest": ["inngest@4.0.0", "", { "dependencies": { "@bufbuild/protobuf": "^2.2.3", "@inngest/ai": "^0.1.3", "@jpwilliams/waitgroup": "^2.1.1", "@opentelemetry/api": "^1.9.0", "@opentelemetry/auto-instrumentations-node": ">=0.66.0 <1.0.0", "@opentelemetry/context-async-hooks": ">=2.0.0 <3.0.0", "@opentelemetry/exporter-trace-otlp-http": ">=0.200.0 <0.300.0", "@opentelemetry/instrumentation": ">=0.200.0 <0.300.0", "@opentelemetry/resources": ">=2.0.0 <3.0.0", "@opentelemetry/sdk-trace-base": ">=2.0.0 <3.0.0", "@standard-schema/spec": "^1.0.0", "@traceloop/instrumentation-anthropic": "^0.20.0", "@types/debug": "^4.1.12", "@types/ms": "~2.1.0", "canonicalize": "^1.0.8", "cross-fetch": "^4.0.0", "debug": "^4.3.4", "hash.js": "^1.1.7", "json-stringify-safe": "^5.0.1", "ms": "^2.1.3", "serialize-error-cjs": "^0.1.3", "temporal-polyfill": "^0.2.5", "ulid": "^2.3.0", "zod": "^3.25.0" }, "peerDependencies": { "@sveltejs/kit": ">=1.27.3", "@vercel/node": ">=2.15.9", "aws-lambda": ">=1.0.7", "express": ">=4.19.2", "fastify": ">=4.21.0", "h3": ">=1.8.1", "hono": ">=4.2.7", "koa": ">=2.14.2", "next": ">=12.0.0", "typescript": ">=5.8.0" }, "optionalPeers": ["@sveltejs/kit", "@vercel/node", "aws-lambda", "express", "fastify", "h3", "hono", "koa", "next", "typescript"] }, "sha512-UvAvLf3H688j3IS4r6hA1LoCPhJrKWFJBKyBEhvY32/Pto6pIsVlp3/8J5yihhITJ1uerAcij4lFnxF/2tucpw=="],
 
     "input-otp": ["input-otp@1.4.2", "", { "peerDependencies": { "react": "^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc", "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc" } }, "sha512-l3jWwYNvrEa6NTCt7BECfCm48GvwuZzkoeG3gBL2w4CHeOXW3eKFmf9UNYkNfYc3mxMrthMnxjIE07MT0zLBQA=="],
 
@@ -3194,6 +3194,8 @@
     "@eslint/eslintrc/globals": ["globals@14.0.0", "", {}, "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="],
 
     "@inngest/ai/@types/node": ["@types/node@22.19.15", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg=="],
+
+    "@inngest/realtime/inngest": ["inngest@3.52.7", "", { "dependencies": { "@bufbuild/protobuf": "^2.2.3", "@inngest/ai": "^0.1.3", "@jpwilliams/waitgroup": "^2.1.1", "@opentelemetry/api": "^1.9.0", "@opentelemetry/auto-instrumentations-node": ">=0.66.0 <1.0.0", "@opentelemetry/context-async-hooks": ">=2.0.0 <3.0.0", "@opentelemetry/exporter-trace-otlp-http": ">=0.200.0 <0.300.0", "@opentelemetry/instrumentation": ">=0.200.0 <0.300.0", "@opentelemetry/resources": ">=2.0.0 <3.0.0", "@opentelemetry/sdk-trace-base": ">=2.0.0 <3.0.0", "@standard-schema/spec": "^1.0.0", "@traceloop/instrumentation-anthropic": "^0.20.0", "@types/debug": "^4.1.12", "@types/ms": "~2.1.0", "canonicalize": "^1.0.8", "chalk": "^4.1.2", "cross-fetch": "^4.0.0", "debug": "^4.3.4", "hash.js": "^1.1.7", "json-stringify-safe": "^5.0.1", "ms": "^2.1.3", "serialize-error-cjs": "^0.1.3", "strip-ansi": "^5.2.0", "temporal-polyfill": "^0.2.5", "ulid": "^2.3.0", "zod": "^3.25.0" }, "peerDependencies": { "@sveltejs/kit": ">=1.27.3", "@vercel/node": ">=2.15.9", "aws-lambda": ">=1.0.7", "express": ">=4.19.2", "fastify": ">=4.21.0", "h3": ">=1.8.1", "hono": ">=4.2.7", "koa": ">=2.14.2", "next": ">=12.0.0", "typescript": ">=5.8.0" }, "optionalPeers": ["@sveltejs/kit", "@vercel/node", "aws-lambda", "express", "fastify", "h3", "hono", "koa", "next", "typescript"] }, "sha512-Bj4LttRrNUfVz745MVxQio34QwHzwG7dHiAI6DmRIZqfRjQ6tdV4mg70xzbRmwsaXgN+iboa+SXP6ILkziUf4g=="],
 
     "@inquirer/core/wrap-ansi": ["wrap-ansi@6.2.0", "", { "dependencies": { "ansi-styles": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0" } }, "sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA=="],
 

@@ -88,6 +88,13 @@ interface CodebaseData {
   messages?: unknown[];
 }
 
+interface StreamdownCodeProps {
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: any;
+}
+
 // Global plugins for the Streamdown markdown engine
 const streamdownPlugins = { cjk, code, math };
 
@@ -178,8 +185,7 @@ export default function CodebaseDetailsPage() {
    * Defines how special markdown tokens (code, mermaid) are rendered within chat bubbles.
    */
   const chatStreamdownComponents = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    code: ({ inline, className, children }: any) => {
+    code: ({ inline, className, children }: StreamdownCodeProps) => {
       const match = /language-(\w+)/.exec(className || "");
       const language = match ? match[1] : null;
       const codeText = String(children).replace(/\n$/, "");
@@ -463,8 +469,11 @@ export default function CodebaseDetailsPage() {
                           <Streamdown
                             plugins={streamdownPlugins}
                             components={{
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              code: ({ inline, className, children }: any) => {
+                              code: ({
+                                inline,
+                                className,
+                                children,
+                              }: StreamdownCodeProps) => {
                                 const match = /language-(\w+)/.exec(
                                   className || "",
                                 );
@@ -538,12 +547,11 @@ export default function CodebaseDetailsPage() {
                                     <Streamdown
                                       plugins={streamdownPlugins}
                                       components={{
-                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                         code: ({
                                           inline,
                                           className,
                                           children,
-                                        }: any) => {
+                                        }: StreamdownCodeProps) => {
                                           const match = /language-(\w+)/.exec(
                                             className || "",
                                           );

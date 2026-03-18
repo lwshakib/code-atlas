@@ -5,4 +5,5 @@ import { realtimeMiddleware } from "@inngest/realtime/middleware";
 export const inngest = new Inngest({
   id: "code-atlas",
   middleware: [realtimeMiddleware()],
+  eventKey: process.env.INNGEST_EVENT_KEY,
 });
