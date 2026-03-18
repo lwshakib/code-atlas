@@ -1,30 +1,40 @@
+/**
+ * STRUCTURED OBJECT GENERATION
+ * 
+ * This file provides a utility to force the LLM to return valid JSON 
+ * that adheres to a specific Zod schema. It includes aggressive sanitization 
+ * and automatic retry logic for brittle model outputs.
+ */
+
 import { z } from "zod";
 import { GLM_WORKER_URL, CLOUDFLARE_API_KEY } from "@/lib/env";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 /**
- * Sanitizes JSON content by stripping markdown fences and non-JSON noise.
+ * SANITIZE JSON
+ * 
+ * LLMs often wrap JSON in markdown blocks (```json ... ```) or add 
+ * conversational prefix/suffix text. This function extracts just the { ... } part.
  */
 function sanitizeJSON(content: string): string {
   const clean = content.trim();
   
-  // 1. Try to find the outermost braces {}
+  // 1. Identify the outermost JSON boundaries
   const firstBrace = clean.indexOf("{");
   const lastBrace = clean.lastIndexOf("}");
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    // Check if there's a JSON markdown block that contains these braces
-    // (Optional but good if the LLM provided valid JSON inside a fenced block)
+    // Check for explicit JSON markdown blocks
     const jsonMatch = clean.match(/```json\n?([\s\S]*?)\n?```/i);
     if (jsonMatch) {
       return jsonMatch[1].trim();
     }
 
-    // Otherwise, just extract everything from the first { to the last }
+    // Fallback: Slice everything between the braces
     return clean.substring(firstBrace, lastBrace + 1);
   }
 
-  // 2. Fallback: Strip markdown fences if present
+  // 2. Secondary check for markdown blocks if braces weren't clean
   if (clean.includes("```")) {
     const match = clean.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
     if (match) {
@@ -36,11 +46,12 @@ function sanitizeJSON(content: string): string {
 }
 
 /**
- * Generates a structured object using the GLM-4.7-Flash worker with JSON schema mode.
+ * GENERATE OBJECT FROM GLM
  * 
- * @param messages - Array of message objects { role, content }
- * @param outputSchema - Zod schema for the expected object
- * @returns The generated and parsed object
+ * High-reliability wrapper for structured LLM interaction.
+ * 
+ * @param messages - The conversation context
+ * @param outputSchema - The Zod schema the AI must satisfy
  */
 export async function generateObjectFromGLM<T>({
   messages,
@@ -49,15 +60,17 @@ export async function generateObjectFromGLM<T>({
   messages: { role: string; content: string }[];
   outputSchema: z.ZodSchema<T>;
 }): Promise<T> {
+  // Convert Zod to JSON Schema format for the AI's internal validation
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jsonSchema = zodToJsonSchema(outputSchema as any);
   const schemaString = JSON.stringify(jsonSchema, null, 2);
 
-  // Inject schema instructions into the first system message if it exists, or create one.
-  // This avoids having multiple competing system messages.
+  // INJECT SCHEMA INSTRUCTIONS
+  // We explicitly tell the model it MUST follow the schema.
   const enhancedMessages = [...messages];
   const schemaInstruction = `\n\nCRITICAL: You MUST return a single JSON object that strictly adheres to this JSON Schema:\n${schemaString}\n\nDo not include any other text, explanations, or markdown outside the JSON object.`;
 
+  // Attach the instruction to the system message
   if (enhancedMessages.length > 0 && enhancedMessages[0].role === "system") {
     enhancedMessages[0] = {
       ...enhancedMessages[0],
@@ -72,6 +85,8 @@ export async function generateObjectFromGLM<T>({
 
   let lastError: unknown = null;
 
+  // 3-STRIKE RETRY LOOP
+  // If the model produces invalid JSON or fails schema validation, we retry up to 3 times.
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       console.log(`[GLM generateObject] Initiating Attempt ${attempt}...`);
@@ -84,6 +99,7 @@ export async function generateObjectFromGLM<T>({
         },
         body: JSON.stringify({
           messages: enhancedMessages,
+          // Use advanced 'json_schema' mode supported by our custom GLM worker
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -106,20 +122,20 @@ export async function generateObjectFromGLM<T>({
         throw new Error("GLM returned empty content");
       }
 
+      // Cleanup raw LLM output
       const cleanContent = sanitizeJSON(content);
 
       try {
         const parsed = JSON.parse(cleanContent);
-        // Successful parse and Zod validation
+        // VALDATION: If this fails, it jumps to the catch block and triggers a retry
         const validated = outputSchema.parse(parsed);
         console.log(`[GLM generateObject] Attempt ${attempt} Succeeded.`);
         return validated;
       } catch (innerError: unknown) {
         console.warn(`[GLM generateObject] Attempt ${attempt} failed validation.`);
-        console.log(`[GLM generateObject] RAW CONTENT:`, content);
         lastError = innerError;
-        // Optimization: if it's a ZodError, we can see exactly what failed
         if (innerError instanceof z.ZodError) {
+          // Log specific schema mismatches to help with prompt debugging
           console.error("[GLM generateObject] Zod Issues:", JSON.stringify(innerError.issues, null, 2));
         }
       }
@@ -128,7 +144,7 @@ export async function generateObjectFromGLM<T>({
       lastError = outerError;
     }
 
-    // Wait slightly before retry (optional, but decent for rate limits)
+    // Exponential backoff before retry (1s, 2s)
     if (attempt < 3) {
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
@@ -137,3 +153,4 @@ export async function generateObjectFromGLM<T>({
   console.error("[GLM generateObject] All 3 attempts failed. Throwing last error.");
   throw lastError || new Error("Failed to generate valid object after 3 attempts");
 }
+

@@ -1,3 +1,11 @@
+/**
+ * EMBEDDING GENERATION UTILITIES
+ * 
+ * This file handles converting text into vector embeddings using the BGE-M3 model 
+ * hosted on Cloudflare Workers. It includes complex "token-aware batching" 
+ * to respect the model's strict context window limits.
+ */
+
 import { Embeddings } from '@langchain/core/embeddings';
 import * as env from '@/lib/env';
 import {
@@ -7,16 +15,18 @@ import {
 } from '@/lib/constants';
 
 /**
- * Custom wrapper for Cloudflare Workers AI BGE-M3 Embeddings.
- * BGE-M3 is a Multi-Functionality, Multi-Linguality, and Multi-Granularity model.
- * It produces embeddings with 1024 dimensions.
+ * CLOUDFLARE BGE-M3 EMBEDDINGS CLASS
+ * 
+ * A custom LangChain-compatible wrapper for our serverless embedding provider.
+ * Dimensionality: 1024.
  */
 class CloudflareBgeM3Embeddings extends Embeddings {
   apiKey: string;
   workerUrl: string;
 
   /**
-   * @param fields - Optional API key and worker URL overrides.
+   * CONSTRUCTOR
+   * Initializes the credentials from environment variables.
    */
   constructor(fields?: { apiKey?: string; workerUrl?: string }) {
     super({});
@@ -32,20 +42,25 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   }
 
   /**
-   * Estimate token count from a string using a conservative chars-per-token ratio.
+   * ESTIMATE TOKENS
+   * Heuristic used to guess the token count before sending to the model.
+   * Based on CHARS_PER_TOKEN_ESTIMATE defined in constants.ts.
    */
   private estimateTokens(text: string): number {
     return Math.ceil(text.length / CHARS_PER_TOKEN_ESTIMATE);
   }
 
   /**
-   * Creates token-budget-aware batches that stay within the model's context limit.
-   * Each batch will not exceed BGE_M3_MAX_TOKENS_PER_BATCH estimated tokens,
-   * and will also respect the BGE_M3_EMBEDDING_BATCH_SIZE document count limit.
+   * CREATE TOKEN-AWARE BATCHES
+   * 
+   * CRITICAL LOGIC: Cloudflare's BGE-M3 worker has a limit of ~60k tokens per request.
+   * If we send too many documents or too much text at once, the API will fail.
+   * This function packs documents into batches that stay under both 'max dots' 
+   * and 'max tokens' safety thresholds.
    */
   private createTokenAwareBatches(documents: string[]): string[][] {
-    const maxTokens = BGE_M3_MAX_TOKENS_PER_BATCH;
-    const maxDocs = BGE_M3_EMBEDDING_BATCH_SIZE;
+    const maxTokens = BGE_M3_MAX_TOKENS_PER_BATCH; // e.g., 50,000
+    const maxDocs = BGE_M3_EMBEDDING_BATCH_SIZE;    // e.g., 10
     const batches: string[][] = [];
     let currentBatch: string[] = [];
     let currentTokens = 0;
@@ -53,18 +68,18 @@ class CloudflareBgeM3Embeddings extends Embeddings {
     for (const doc of documents) {
       const docTokens = this.estimateTokens(doc);
 
-      // If a single document exceeds the budget, it goes in its own batch
+      // SCENARIO 1: A single massive document exceeds the entire batch budget
       if (docTokens >= maxTokens) {
         if (currentBatch.length > 0) {
-          batches.push(currentBatch);
+          batches.push(currentBatch); // Flush existing batch
           currentBatch = [];
           currentTokens = 0;
         }
-        batches.push([doc]);
+        batches.push([doc]); // Put the giant doc in its own isolated batch
         continue;
       }
 
-      // Start a new batch if adding this doc would exceed limits
+      // SCENARIO 2: Adding this doc would break the current batch limit
       if (
         currentTokens + docTokens > maxTokens ||
         currentBatch.length >= maxDocs
@@ -76,10 +91,12 @@ class CloudflareBgeM3Embeddings extends Embeddings {
         currentTokens = 0;
       }
 
+      // STANDARD CASE: Add to current working batch
       currentBatch.push(doc);
       currentTokens += docTokens;
     }
 
+    // Final Flush
     if (currentBatch.length > 0) {
       batches.push(currentBatch);
     }
@@ -88,12 +105,8 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   }
 
   /**
-   * Generates embeddings for an array of document strings.
-   * Automatically batches requests using token-budget-aware batching
-   * to comply with the Cloudflare model's context window limit (60k tokens).
-   *
-   * @param documents - Array of text strings to embed.
-   * @returns A promise resolving to an array of coordinate arrays (embeddings).
+   * EMBED DOCUMENTS (Array Interface)
+   * Main entry point for the indexing pipeline.
    */
   async embedDocuments(documents: string[], signal?: AbortSignal): Promise<number[][]> {
     const batches = this.createTokenAwareBatches(documents);
@@ -103,6 +116,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
       `[Embeddings] Splitting ${documents.length} documents into ${batches.length} token-aware batches`
     );
 
+    // Process each safety-batch sequentially
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
       const estimatedTokens = batch.reduce(
@@ -120,7 +134,8 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   }
 
   /**
-   * Internal helper to send a single batch of documents to the Cloudflare worker.
+   * _EMBED BATCH (Internal HTTP Request)
+   * Sends the actual POST request to the Cloudflare Worker.
    */
   private async _embedBatch(documents: string[], signal?: AbortSignal): Promise<number[][]> {
     try {
@@ -128,10 +143,11 @@ class CloudflareBgeM3Embeddings extends Embeddings {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Bearer token authentication required for our custom workers
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          text: documents,
+          text: documents, // Worker expects an array of strings
         }),
         signal,
       });
@@ -143,7 +159,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
 
       const result = await response.json();
 
-      // The worker returns { data: number[][], shape: [n, 1024], ... }
+      // The BGE-M3 worker returns coordinate arrays (1024 floats)
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error('Invalid response format from embedding worker');
       }
@@ -156,7 +172,8 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   }
 
   /**
-   * Generates an embedding for a single search query or document.
+   * EMBED QUERY (Single Item Interface)
+   * Used for user search queries where only one string needs processing.
    */
   async embedQuery(document: string, signal?: AbortSignal): Promise<number[]> {
     try {
@@ -192,24 +209,18 @@ class CloudflareBgeM3Embeddings extends Embeddings {
 }
 
 /**
- * Factory function to get an embeddings client.
- * BGE-M3 default dimensionality is 1024.
+ * EXPORTS & FACTORIES
  */
 export const getEmbeddings = () =>
   new CloudflareBgeM3Embeddings();
 
-/**
- * Simple helper to generate embedding for a single string.
- */
 export const generateEmbeddings = async (text: string, signal?: AbortSignal) => {
   const embeddings = getEmbeddings();
   return await embeddings.embedQuery(text, signal);
 };
 
-/**
- * Simple helper to generate embeddings for a list of strings in batch.
- */
 export const generateBatchEmbeddings = async (texts: string[], signal?: AbortSignal) => {
   const embeddings = getEmbeddings();
   return await embeddings.embedDocuments(texts, signal);
 };
+

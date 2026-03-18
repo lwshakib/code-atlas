@@ -1,6 +1,14 @@
 /**
- * Repository Documentation Generation System Prompt.
- * Used by Inngest functions to generate the initial codebase wiki.
+ * LLM SYSTEM PROMPTS
+ * 
+ * Defines the core "personalities" and operating constraints for our AI agents.
+ */
+
+/**
+ * REPOSITORY DOCUMENTATION SYSTEM PROMPT
+ * 
+ * Used by Inngest background functions to generate the initial codebase wiki.
+ * It instructs the model to act as a 'Lead Architect' and output structural JSON.
  */
 export const DOCS_GENERATION_SYSTEM_PROMPT = `You are a world-class Lead Architect and Documentation Expert. Your goal is to produce the most comprehensive, professional, and granular documentation possible for a software repository. You excel at explaining complex logic and visualizing architecture using Mermaid. Your documentation should be so detailed that a new developer could understand the entire system just by reading it.
 
@@ -10,8 +18,10 @@ FORMATTING RULES:
 3. Use 'mermaid' code blocks (e.g., \`\`\`mermaid) inside your text fields for diagrams.`;
 
 /**
- * Chat Assistant System Prompt.
- * Used by the chat API to guide the AI's behavior during interactions.
+ * CHAT ASSISTANT SYSTEM PROMPT
+ * 
+ * Used by the chat API to guide interactive troubleshooting.
+ * Focuses on research speed, precision, and multi-database tool usage (Neo4j/Pinecone).
  */
 export const CHAT_ASSISTANT_SYSTEM_PROMPT = (codebaseName: string) => `You are an expert Software Architect AI assistant for the codebase: "${codebaseName}".
       
@@ -28,3 +38,4 @@ RESPONSE FORMAT:
 - Use clean Markdown and bold text for key patterns.
 
 Current Date: ${new Date().toLocaleDateString()}`;
+

@@ -1,14 +1,14 @@
+/**
+ * STREAMING CHAT ENGINE (AGI LOOP)
+ * 
+ * This file implements a multi-turn autonomous agent. It doesn't just stream text; 
+ * it iteratively calls database tools (Neo4j, Pinecone) until it has enough info 
+ * to answer the user's codebase query.
+ */
+
 import { GLM_WORKER_URL, CLOUDFLARE_API_KEY } from "@/lib/env";
 import { executeTool } from "@/lib/ai-tools";
 
-/**
- * Creates a readable stream from the GLM-4.7-Flash worker with tool support.
- * 
- * @param messages - Array of message objects { role, content, ... }
- * @param options - tools, tool_choice, etc.
- * @param signal - AbortSignal to cancel the request
- * @returns A ReadableStream that emits text chunks
- */
 export interface Message {
   role: "system" | "user" | "assistant" | "tool";
   content?: string;
@@ -17,6 +17,16 @@ export interface Message {
   name?: string;
 }
 
+/**
+ * STREAM TEXT FROM GLM
+ * 
+ * The main high-level logic for codebase chat. Orchestrates the research loop.
+ * 
+ * @param messages Initial conversation history
+ * @param options Includes existing codebase ID and available tools
+ * @param signal AbortSignal to stop the agent if the user cancels
+ * @returns A ReadableStream of JSON-objects (NDJSON)
+ */
 export async function streamTextFromGLM(
   messages: Message[], 
   options: { tools?: unknown[]; tool_choice?: string; codebaseId?: string } = {},
@@ -24,7 +34,10 @@ export async function streamTextFromGLM(
 ): Promise<ReadableStream> {
   const currentMessages = [...messages];
 
-  // Logic to handle tool calls and potentially multi-turn before streaming text
+  /**
+   * INITIAL REQUEST HELPER
+   * Sends the starting prompt to the serverless worker.
+   */
   const getInitialStream = async () => {
     const response = await fetch(GLM_WORKER_URL, {
       method: "POST",
@@ -63,28 +76,38 @@ export async function streamTextFromGLM(
       let toolCalls: { id: string; type: string; function: { name: string; arguments: string } }[] = [];
       let turnCount = 0;
       let lineBuffer = "";
-      const MAX_TURNS = 6; // Hard limit for safety
+      const MAX_TURNS = 6; // Safety cap to prevent Infinite Research Loops
 
       try {
+        // Enqueue a newline-delimited JSON string into the stream
         const streamJson = (obj: { type: string; [key: string]: unknown }) => {
           controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));
         };
 
+        /**
+         * MAIN AGENT LOOP
+         * Continues processing as long as there's stream output or pending tool calls.
+         */
         while (true) {
           const { done, value } = await currentReader.read();
 
           if (done) {
+            // IF THE STREAM ENDED WITH TOOL CALLS: We must execute them and restart the stream
             if (toolCalls.length > 0 && turnCount < MAX_TURNS) {
               turnCount++;
               
+              // 1. Record the assistant's request for tools in history
               const assistantMessage: Message = { role: "assistant", tool_calls: toolCalls };
               currentMessages.push(assistantMessage);
 
-              // Execute tool calls in parallel for efficiency
+              // 2. PARALLEL TOOL EXECUTION
+              // We run search_codebase and get_file_content in parallel for max performance
               const toolResults = await Promise.all(
                 toolCalls.map(async (tc) => {
                   signal?.throwIfAborted();
+                  // Notify UI that a tool is active
                   streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "calling" });
+                  
                   try {
                     const result = await executeTool(
                       tc.function.name, 
@@ -92,6 +115,7 @@ export async function streamTextFromGLM(
                       options.codebaseId || "",
                       signal
                     );
+                    // Notify UI of success
                     streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "success", result });
                     return { id: tc.id, content: JSON.stringify(result) };
                   } catch (e) {
@@ -102,7 +126,7 @@ export async function streamTextFromGLM(
                 })
               );
 
-              // Add all results to message history
+              // 3. Add tool responses to our conversation history
               for (const tr of toolResults) {
                 currentMessages.push({
                   role: "tool",
@@ -111,6 +135,7 @@ export async function streamTextFromGLM(
                 });
               }
 
+              // 4. RECURSIVE CALL: Re-submit the whole history to the LLM to get the next step
               const nextRes = await fetch(GLM_WORKER_URL, {
                 method: "POST",
                 headers: {
@@ -119,6 +144,7 @@ export async function streamTextFromGLM(
                 },
                 body: JSON.stringify({
                   messages: currentMessages,
+                  // Disable tools if we reached max turns to force a final answer
                   tools: turnCount < MAX_TURNS ? options.tools : undefined,
                   stream: true
                 }),
@@ -130,17 +156,17 @@ export async function streamTextFromGLM(
               const nextReader = nextRes.body?.getReader();
               if (!nextReader) break;
               currentReader = nextReader;
-              toolCalls = []; 
+              toolCalls = []; // Reset for the next turn
               continue;
             }
-            break; 
+            break; // No more tool calls and stream is done
           }
 
+          // CHUNK PROCESSING (Standard SSE-like parsing)
           const chunk = decoder.decode(value, { stream: true });
           const combined = lineBuffer + chunk;
           const lines = combined.split("\n");
 
-          // Keep the last (potentially incomplete) line in the buffer
           lineBuffer = lines.pop() || "";
 
           for (const line of lines) {
@@ -152,6 +178,7 @@ export async function streamTextFromGLM(
                 const parsed = JSON.parse(dataStr);
                 const delta = parsed.choices?.[0]?.delta;
                 
+                // Accumulate tool call arguments as they stream in
                 if (delta?.tool_calls) {
                   for (const tc of delta.tool_calls) {
                     if (!toolCalls[tc.index]) {
@@ -161,11 +188,13 @@ export async function streamTextFromGLM(
                     if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name;
                     if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
                   }
-                } else if (delta?.content) {
+                } 
+                // Forward text chunks immediately to the UI
+                else if (delta?.content) {
                   streamJson({ type: "text", content: delta.content });
                 }
               } catch {
-                // Ignore parsing errors for individual lines
+                // Ignore partial JSON lines
               }
             }
           }
@@ -183,4 +212,5 @@ export async function streamTextFromGLM(
     }
   });
 }
+
 
