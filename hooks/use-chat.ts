@@ -28,6 +28,15 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesRef = useRef<Message[]>(initialMessages);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  }, []);
 
   const append = useCallback(async (newMessage: { role: "user"; content: string }) => {
     const userMessage: Message = { id: nanoid(), ...newMessage };
@@ -39,6 +48,8 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
     });
     
     setIsLoading(true);
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
       const response = await fetch(api, {
@@ -47,6 +58,7 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
         body: JSON.stringify({ 
           messages: messagesRef.current.map(({ role, content }) => ({ role, content })) 
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) throw new Error(`Fetch failed with status: ${response.status}`);
@@ -108,15 +120,19 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
               });
             }
           } catch (e) {
-            // If it's not JSON, it might be raw text from an older version or error
-            console.warn("[useChat] Received non-JSON chunk:", line);
+            // If it's not JSON, it might be raw text 
           }
         }
       }
-    } catch (error) {
-      console.error("[useChat] Error:", error);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.log("[useChat] Request aborted");
+      } else {
+        console.error("[useChat] Error:", error);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   }, [api]);
 
@@ -135,6 +151,7 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
     setInput, 
     append, 
     isLoading, 
+    stop,
     handleSubmit,
     setMessages 
   };

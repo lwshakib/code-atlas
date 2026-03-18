@@ -28,7 +28,8 @@ import {
   X,
   Sparkles,
   ArrowUpRight,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
@@ -68,6 +69,17 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { InputGroup } from '@/components/ui/input-group';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { authClient } from '@/lib/auth-client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -112,7 +124,10 @@ export default function CodebaseDetailsPage() {
         const result = await response.json();
         if (result.success) {
           setCodebase(result.data);
-          if (result.data.docPages.length > 0) {
+          if (result.data.messages && result.data.messages.length > 0) {
+            setMessages(result.data.messages);
+          }
+          if (result.data.docPages && result.data.docPages.length > 0) {
             setActivePageId(result.data.docPages[0].id);
           }
         }
@@ -214,10 +229,32 @@ export default function CodebaseDetailsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const { messages, input, setInput, append, isLoading: isChatLoading, handleSubmit: handleChatSubmit } = useChat({
+  const { 
+    messages, 
+    input, 
+    setInput, 
+    append, 
+    isLoading: isChatLoading, 
+    handleSubmit: handleChatSubmit,
+    setMessages,
+    stop 
+  } = useChat({
     api: `/api/chat/${codebaseId}`,
     initialMessages: [],
   });
+
+  const handleClearChat = async () => {
+    try {
+      const response = await fetch(`/api/codebases/${codebaseId}`, {
+        method: "PUT",
+      });
+      if (response.ok) {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Failed to clear chat:", error);
+    }
+  };
 
   const handleQuestionClick = (question: string) => {
     append({ role: 'user', content: question });
@@ -456,7 +493,37 @@ export default function CodebaseDetailsPage() {
                   className="h-full bg-secondary/10 rounded-[2.5rem] border border-border/30 overflow-hidden flex flex-col relative shadow-2xl shadow-primary/5"
                 >
 
-
+                  {/* Header Actions */}
+                  <div className="absolute top-6 left-6 z-10">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-8 w-8 rounded-full bg-background/50 backdrop-blur-sm text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete all messages in this conversation. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleClearChat}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Clear History
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <Conversation className="flex-1">
                     <ConversationContent className="pb-32 pt-12 px-6">
                       {messages.length === 0 ? (
@@ -527,18 +594,19 @@ export default function CodebaseDetailsPage() {
                         className="min-h-[100px] max-h-48 bg-transparent border-border/10 focus-visible:ring-primary/20 rounded-2xl pr-14 py-4 resize-none"
                       />
                       <Button
-                        type="submit"
-                        disabled={!input.trim() || isChatLoading}
+                        type={isChatLoading ? "button" : "submit"}
+                        onClick={isChatLoading ? stop : undefined}
+                        disabled={!input.trim() && !isChatLoading}
                         size="icon"
-                        className="absolute right-3 bottom-3 size-9 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+                        className={cn(
+                          "absolute right-3 bottom-3 size-9 rounded-xl transition-all shadow-lg",
+                          isChatLoading 
+                            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-destructive/20" 
+                            : "bg-primary text-primary-foreground hover:opacity-90 shadow-primary/20"
+                        )}
                       >
                         {isChatLoading ? (
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                          >
-                            <Zap className="w-4 h-4" />
-                          </motion.div>
+                          <X className="w-4 h-4" />
                         ) : (
                           <Send className="w-4 h-4" />
                         )}

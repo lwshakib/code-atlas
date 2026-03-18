@@ -109,6 +109,43 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete codebase" }, { status: 500 });
   }
 }
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id: codebaseId } = await params;
+
+    // Verify ownership
+    const codebase = await prisma.codebase.findUnique({
+      where: { id: codebaseId },
+    });
+
+    if (!codebase || codebase.userId !== session.user.id) {
+      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+    }
+
+    // Delete all messages for this codebase
+    await prisma.message.deleteMany({
+      where: { codebaseId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("API PUT /api/codebases/[id] error:", error);
+    return NextResponse.json({ error: "Failed to clear chat history" }, { status: 500 });
+  }
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -135,13 +172,32 @@ export async function GET(
             }
           }
         },
-        recommendations: true
+        recommendations: true,
+        messages: {
+          orderBy: { createdAt: "asc" }
+        }
       }
     });
 
     if (!codebase || codebase.userId !== session.user.id) {
       return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
     }
+
+    // Map messages back to frontend format
+    const formattedMessages = codebase.messages.map(m => {
+      const parts = m.parts as any;
+      return {
+        id: m.id,
+        role: m.role,
+        content: Array.isArray(parts) ? parts.find(p => p.type === 'text')?.text || '' : '',
+        toolInvocations: Array.isArray(parts) ? parts.filter(p => p.type === 'tool').map(p => ({
+          id: p.id,
+          tool: p.tool,
+          status: 'success', // Re-loaded tools are always successful
+          result: p.result
+        })) : []
+      };
+    });
 
     // Filter to only return top-level pages
     const topLevelPages = codebase.docPages.filter(p => !p.parentId);
@@ -150,7 +206,8 @@ export async function GET(
       success: true, 
       data: {
         ...codebase,
-        docPages: topLevelPages
+        docPages: topLevelPages,
+        messages: formattedMessages
       } 
     });
   } catch (error: any) {
