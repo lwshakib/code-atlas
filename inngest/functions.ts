@@ -9,6 +9,7 @@ import { codebaseChannel } from "./channels";
 import { generateObjectFromGLM } from "@/llm/generateObject";
 import { z } from "zod";
 import { DOCS_GENERATION_SYSTEM_PROMPT } from "@/llm/prompts";
+import { sendIndexingCompleteEmail } from "@/lib/email";
 
 
 
@@ -228,10 +229,24 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
 
       // Finalize status to COMPLETED
       await step.run("finalize-indexing", async () => {
-        await prisma.codebase.update({
+        const codebase = await prisma.codebase.update({
           where: { id: codebaseId },
           data: { status: "COMPLETED" },
+          include: { user: true }
         });
+        
+        if (codebase.user?.email) {
+          try {
+            await sendIndexingCompleteEmail({
+              to: codebase.user.email,
+              codebaseName: codebase.name,
+              codebaseId: codebase.id
+            });
+          } catch (err) {
+            console.error("[EMAIL_NOTIFY_ERROR]", err);
+          }
+        }
+        
         await publish(codebaseChannel(codebaseId).status({ status: "COMPLETED" }));
       });
 
