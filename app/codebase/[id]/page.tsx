@@ -262,8 +262,9 @@ export default function CodebaseDetailsPage() {
     append({ role: 'user', content: question });
   };
 
-  const CopyButton = ({ content }: { content: string }) => {
+  const CopyButton = ({ content, isUser }: { content: string; isUser: boolean }) => {
     const [copied, setCopied] = React.useState(false);
+    if (!content) return null;
     
     const onCopy = async () => {
       try {
@@ -278,13 +279,16 @@ export default function CodebaseDetailsPage() {
     return (
       <button
         onClick={onCopy}
-        className="mt-1 mr-1 p-1.5 rounded-lg hover:bg-secondary/80 text-muted-foreground/30 hover:text-primary transition-all self-end group-hover:opacity-100 opacity-0 cursor-pointer"
+        className={cn(
+          "mt-1 p-2 rounded-lg hover:bg-secondary/80 text-muted-foreground/30 hover:text-primary transition-all group-hover:opacity-100 opacity-0 cursor-pointer",
+          isUser ? "mr-1 self-end" : "ml-1 self-start"
+        )}
         title="Copy message"
       >
         {copied ? (
-          <Check className="w-3 h-3 text-primary animate-in zoom-in" />
+          <Check className="w-3.5 h-3.5 text-primary animate-in zoom-in" />
         ) : (
-          <Copy className="w-3 h-3" />
+          <Copy className="w-3.5 h-3.5" />
         )}
       </button>
     );
@@ -581,7 +585,8 @@ export default function CodebaseDetailsPage() {
                                 </>
                               )}
                             </MessageContent>
-                            {m.role === 'user' && <CopyButton content={m.content} />}
+                            {m.role === 'user' && <CopyButton content={m.content} isUser={true} />}
+                            {m.role === 'assistant' && <CopyButton content={m.content} isUser={false} />}
                           </AIMessage>
                         ))
                       )}
