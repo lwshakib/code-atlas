@@ -38,34 +38,40 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
     });
 
     // 2. Cleanup data from external systems (Pinecone, Neo4j, Postgres)
-    
+
     // Delete vector embeddings from Pinecone
     try {
       const pineconeIndex = getPineconeIndex();
       await pineconeIndex.deleteMany({
-        filter: { codebaseId: { $eq: codebaseId } }
+        filter: { codebaseId: { $eq: codebaseId } },
       });
     } catch (pcError) {
-      console.error("Failed to delete from Pinecone during cancellation:", pcError);
+      console.error(
+        "Failed to delete from Pinecone during cancellation:",
+        pcError,
+      );
     }
 
     // Delete architectural nodes and relationships from Neo4j
     try {
       const driver = getNeo4jDriver();
       const neoSession = driver.session();
-      await neoSession.executeWrite(tx => 
+      await neoSession.executeWrite((tx) =>
         tx.run(
           `
           MATCH (c:Codebase {id: $id})
           OPTIONAL MATCH (f:File {codebaseId: $id})
           DETACH DELETE c, f
           `,
-          { id: codebaseId }
-        )
+          { id: codebaseId },
+        ),
       );
       await neoSession.close();
     } catch (neoError) {
-      console.error("Failed to delete from Neo4j during cancellation:", neoError);
+      console.error(
+        "Failed to delete from Neo4j during cancellation:",
+        neoError,
+      );
     }
 
     // Finally, remove the codebase record from our primary Postgres database
@@ -77,73 +83,76 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
   } catch (error) {
     const err = error as Error;
     console.error("cancelAndCleanupIndexingAction error:", err);
-    return { success: false, error: err.message || "Failed to cancel indexing" };
+    return {
+      success: false,
+      error: err.message || "Failed to cancel indexing",
+    };
   }
 }
 
 export async function retryIndexingAction(codebaseId: string) {
-    // Verify user session
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-  
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
-  
-    try {
-      // Fetch the codebase record
-      const codebase = await prisma.codebase.findUnique({
-        where: { id: codebaseId },
-      });
-  
-      // Ensure the user owns this codebase
-      if (!codebase || codebase.userId !== session.user.id) {
-        throw new Error("Codebase not found or access denied");
-      }
+  // Verify user session
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-      // Fetch the GitHub account connected to the user to get a fresh access token
-      const account = await prisma.account.findFirst({
-        where: {
-          userId: session.user.id,
-          providerId: "github",
-        },
-      });
-
-      if (!account || !account.accessToken) {
-         throw new Error("GitHub account not connected");
-      }
-
-      // Parse the GitHub URL to extract repository details (owner/repo)
-      const urlParts = codebase.url.split("/");
-      const owner = urlParts[3];
-      const repo = urlParts[4];
-      const repoFullName = `${owner}/${repo}`;
-  
-      // Reset the codebase status to PENDING so the UI knows it's starting over
-      await prisma.codebase.update({
-        where: { id: codebaseId },
-        data: { status: "PENDING" },
-      });
-  
-      // Trigger the Inngest 'index.start' event to begin the background indexing process
-      await inngest.send({
-        name: "codebase/index.start",
-        data: {
-          repoFullName,
-          codebaseId: codebase.id,
-          accessToken: account.accessToken,
-          userId: session.user.id,
-        },
-      });
-  
-      return { success: true };
-    } catch (error) {
-      const err = error as Error;
-      console.error("retryIndexingAction error:", err);
-      return { success: false, error: err.message || "Failed to retry indexing" };
-    }
+  if (!session) {
+    throw new Error("Unauthorized");
   }
+
+  try {
+    // Fetch the codebase record
+    const codebase = await prisma.codebase.findUnique({
+      where: { id: codebaseId },
+    });
+
+    // Ensure the user owns this codebase
+    if (!codebase || codebase.userId !== session.user.id) {
+      throw new Error("Codebase not found or access denied");
+    }
+
+    // Fetch the GitHub account connected to the user to get a fresh access token
+    const account = await prisma.account.findFirst({
+      where: {
+        userId: session.user.id,
+        providerId: "github",
+      },
+    });
+
+    if (!account || !account.accessToken) {
+      throw new Error("GitHub account not connected");
+    }
+
+    // Parse the GitHub URL to extract repository details (owner/repo)
+    const urlParts = codebase.url.split("/");
+    const owner = urlParts[3];
+    const repo = urlParts[4];
+    const repoFullName = `${owner}/${repo}`;
+
+    // Reset the codebase status to PENDING so the UI knows it's starting over
+    await prisma.codebase.update({
+      where: { id: codebaseId },
+      data: { status: "PENDING" },
+    });
+
+    // Trigger the Inngest 'index.start' event to begin the background indexing process
+    await inngest.send({
+      name: "codebase/index.start",
+      data: {
+        repoFullName,
+        codebaseId: codebase.id,
+        accessToken: account.accessToken,
+        userId: session.user.id,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    const err = error as Error;
+    console.error("retryIndexingAction error:", err);
+    return { success: false, error: err.message || "Failed to retry indexing" };
+  }
+}
 
 /**
  * Fetches a short-lived realtime subscription token for the Inngest/Realtime stream.

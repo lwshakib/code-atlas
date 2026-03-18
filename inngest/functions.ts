@@ -4,7 +4,10 @@ import { Octokit } from "octokit";
 import prisma from "@/lib/prisma";
 import { getNeo4jDriver } from "@/lib/neo4j";
 import { getPineconeIndex } from "@/lib/pinecone";
-import { INDEXING_BATCH_SIZE, MAX_EMBEDDING_TEXT_LENGTH } from "@/lib/constants";
+import {
+  INDEXING_BATCH_SIZE,
+  MAX_EMBEDDING_TEXT_LENGTH,
+} from "@/lib/constants";
 import { generateBatchEmbeddings } from "@/llm/embeddings";
 import { codebaseChannel } from "./channels";
 import { generateObjectFromGLM } from "@/llm/generateObject";
@@ -12,23 +15,19 @@ import { z } from "zod";
 import { DOCS_GENERATION_SYSTEM_PROMPT } from "@/llm/prompts";
 import { sendIndexingCompleteEmail } from "@/lib/email";
 
-
-
-
 export const indexCodebase = inngest.createFunction(
-  { 
-    id: "index-codebase", 
+  {
+    id: "index-codebase",
     cancelOn: [
       {
         event: "codebase/index.cancel",
         match: "data.codebaseId",
-      }
-    ]
+      },
+    ],
   },
   { event: "codebase/index.start" },
   // @ts-expect-error - inngest function event type mismatch in current SDK version
   async ({ event, step, publish }) => {
-
     const { repoFullName, codebaseId, accessToken } = event.data;
 
     try {
@@ -41,12 +40,17 @@ export const indexCodebase = inngest.createFunction(
           where: { id: codebaseId },
           data: { status: "INDEXING" },
         });
-        await publish(codebaseChannel(codebaseId).status({ status: "INDEXING" }));
+        await publish(
+          codebaseChannel(codebaseId).status({ status: "INDEXING" }),
+        );
       });
 
       // 1. Fetch Repository Tree
       const treeData = await step.run("fetch-repo-tree", async () => {
-        const { data: repoInfo } = await octokit.rest.repos.get({ owner, repo });
+        const { data: repoInfo } = await octokit.rest.repos.get({
+          owner,
+          repo,
+        });
         const { data } = await octokit.rest.git.getTree({
           owner,
           repo,
@@ -54,7 +58,8 @@ export const indexCodebase = inngest.createFunction(
           recursive: "true",
         });
         return data.tree.filter(
-          (item) => item.type === "blob" && item.path && isRelevantFile(item.path)
+          (item) =>
+            item.type === "blob" && item.path && isRelevantFile(item.path),
         ) as { path: string; sha: string; [key: string]: unknown }[];
       });
 
@@ -63,11 +68,11 @@ export const indexCodebase = inngest.createFunction(
 
       for (let i = 0; i < treeData.length; i += BATCH_SIZE) {
         const batch = treeData.slice(i, i + BATCH_SIZE);
-        
+
         await step.run(`process-batch-${i / BATCH_SIZE}`, async () => {
           const driver = getNeo4jDriver();
           const pineconeIndex = getPineconeIndex();
-          
+
           // A. Fetch all file contents in parallel within the batch
           const fileContents = await Promise.all(
             batch.map(async (file) => {
@@ -77,20 +82,31 @@ export const indexCodebase = inngest.createFunction(
                   repo,
                   file_sha: file.sha!,
                 });
-                const content = Buffer.from(contentData.content, "base64").toString("utf-8");
-                return { file, content, text: `File: ${file.path}\n\nCode:\n${content.substring(0, MAX_EMBEDDING_TEXT_LENGTH)}` };
+                const content = Buffer.from(
+                  contentData.content,
+                  "base64",
+                ).toString("utf-8");
+                return {
+                  file,
+                  content,
+                  text: `File: ${file.path}\n\nCode:\n${content.substring(0, MAX_EMBEDDING_TEXT_LENGTH)}`,
+                };
               } catch (err) {
                 console.error(`Error fetching ${file.path}:`, err);
                 return null;
               }
-            })
+            }),
           );
 
-          const validFiles = fileContents.filter((f): f is NonNullable<typeof f> => f !== null);
+          const validFiles = fileContents.filter(
+            (f): f is NonNullable<typeof f> => f !== null,
+          );
           if (validFiles.length === 0) return;
 
           // B. Generate Embeddings in BATCH (Significant cost/performance improvement)
-          const embeddings = await generateBatchEmbeddings(validFiles.map(f => f.text));
+          const embeddings = await generateBatchEmbeddings(
+            validFiles.map((f) => f.text),
+          );
 
           const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
           const session = driver.session();
@@ -119,15 +135,15 @@ export const indexCodebase = inngest.createFunction(
                   SET f.content = $content
                   MERGE (f)-[:BELONGS_TO]->(c)
                   `,
-                  { codebaseId, path: file.path, content }
-                )
+                  { codebaseId, path: file.path, content },
+                ),
               );
             }
 
             // C. Batched Sync to Pinecone
             if (pineconeRecords.length > 0) {
               await pineconeIndex.upsert({
-                records: pineconeRecords
+                records: pineconeRecords,
               });
             }
           } finally {
@@ -139,23 +155,39 @@ export const indexCodebase = inngest.createFunction(
       // 3. Generate Documentation and Questions
       await step.run("generate-docs-and-questions", async () => {
         // Collect key context: tree structure + important files
-        const importantFileNames = ["package.json", "README.md", "next.config.js", "next.config.ts", "prisma/schema.prisma", "docker-compose.yml", "tsconfig.json"];
-        
+        const importantFileNames = [
+          "package.json",
+          "README.md",
+          "next.config.js",
+          "next.config.ts",
+          "prisma/schema.prisma",
+          "docker-compose.yml",
+          "tsconfig.json",
+        ];
+
         const contextFiles = await Promise.all(
           treeData
-            .filter(f => importantFileNames.includes(f.path?.split('/').pop() || ""))
+            .filter((f) =>
+              importantFileNames.includes(f.path?.split("/").pop() || ""),
+            )
             .map(async (f) => {
               const { data: contentData } = await octokit.rest.git.getBlob({
                 owner,
                 repo,
                 file_sha: f.sha!,
               });
-              const content = Buffer.from(contentData.content, "base64").toString("utf-8");
+              const content = Buffer.from(
+                contentData.content,
+                "base64",
+              ).toString("utf-8");
               return `File: ${f.path}\nContent:\n${content.substring(0, 2000)}`;
-            })
+            }),
         );
 
-        const treeContext = treeData.map(f => f.path).slice(0, 250).join("\n"); // Increased tree context
+        const treeContext = treeData
+          .map((f) => f.path)
+          .slice(0, 250)
+          .join("\n"); // Increased tree context
 
         const prompt = `Analyze this repository: ${repoFullName}
 
@@ -176,23 +208,27 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
 
         const result = await generateObjectFromGLM({
           messages: [
-            { 
-              role: "system", 
-              content: DOCS_GENERATION_SYSTEM_PROMPT 
+            {
+              role: "system",
+              content: DOCS_GENERATION_SYSTEM_PROMPT,
             },
-            { role: "user", content: prompt }
+            { role: "user", content: prompt },
           ],
           outputSchema: z.object({
-            pages: z.array(z.object({
-              title: z.string(),
-              content: z.string(),
-              subsections: z.array(z.object({
+            pages: z.array(
+              z.object({
                 title: z.string(),
-                content: z.string()
-              }))
-            })),
-            questions: z.array(z.string())
-          })
+                content: z.string(),
+                subsections: z.array(
+                  z.object({
+                    title: z.string(),
+                    content: z.string(),
+                  }),
+                ),
+              }),
+            ),
+            questions: z.array(z.string()),
+          }),
         });
 
         // Save generated data to DB
@@ -204,7 +240,7 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
               content: page.content,
               order: i,
               codebaseId,
-            }
+            },
           });
 
           if (page.subsections.length > 0) {
@@ -214,17 +250,17 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
                 content: sub.content,
                 order: subIdx,
                 codebaseId,
-                parentId: createdPage.id
-              }))
+                parentId: createdPage.id,
+              })),
             });
           }
         }
 
         await prisma.recommendation.createMany({
-          data: result.questions.map(q => ({
+          data: result.questions.map((q) => ({
             text: q,
-            codebaseId
-          }))
+            codebaseId,
+          })),
         });
       });
 
@@ -233,22 +269,24 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
         const codebase = await prisma.codebase.update({
           where: { id: codebaseId },
           data: { status: "COMPLETED" },
-          include: { user: true }
+          include: { user: true },
         });
-        
+
         if (codebase.user?.email) {
           try {
             await sendIndexingCompleteEmail({
               to: codebase.user.email,
               codebaseName: codebase.name,
-              codebaseId: codebase.id
+              codebaseId: codebase.id,
             });
           } catch (err) {
             console.error("[EMAIL_NOTIFY_ERROR]", err);
           }
         }
-        
-        await publish(codebaseChannel(codebaseId).status({ status: "COMPLETED" }));
+
+        await publish(
+          codebaseChannel(codebaseId).status({ status: "COMPLETED" }),
+        );
       });
 
       return { success: true, processedCount: treeData.length };
@@ -259,28 +297,52 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
           where: { id: codebaseId },
           data: { status: "FAILED" },
         });
-        await publish(codebaseChannel(codebaseId).status({ 
-          status: "FAILED",
-          message: (error as Error).message || "An unknown error occurred"
-        }));
+        await publish(
+          codebaseChannel(codebaseId).status({
+            status: "FAILED",
+            message: (error as Error).message || "An unknown error occurred",
+          }),
+        );
       });
       throw error;
     }
-  }
+  },
 );
-
 
 function isRelevantFile(path: string): boolean {
   const ignoredExtensions = [
-    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot",
-    ".mp4", ".webm", ".zip", ".tar", ".gz", ".pdf", ".exe", ".dll", ".so",
-    "package-lock.json", "bun.lock", "yarn.lock", ".gitignore", ".prettierrc", ".eslintignore",
-    ".next", "node_modules", ".git"
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".mp4",
+    ".webm",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".pdf",
+    ".exe",
+    ".dll",
+    ".so",
+    "package-lock.json",
+    "bun.lock",
+    "yarn.lock",
+    ".gitignore",
+    ".prettierrc",
+    ".eslintignore",
+    ".next",
+    "node_modules",
+    ".git",
   ];
-  return !ignoredExtensions.some((ext) => path.toLowerCase().endsWith(ext)) && !path.includes('node_modules/') && !path.includes('.next/');
+  return (
+    !ignoredExtensions.some((ext) => path.toLowerCase().endsWith(ext)) &&
+    !path.includes("node_modules/") &&
+    !path.includes(".next/")
+  );
 }
-
-
-
-
-

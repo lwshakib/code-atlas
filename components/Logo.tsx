@@ -1,7 +1,7 @@
 /**
  * LOGO COMPONENTS
- * 
- * Provides the visual branding for Code Atlas. 
+ *
+ * Provides the visual branding for Code Atlas.
  * Includes both the raw SVG icon and a 'LogoWithText' variant for headers.
  */
 
@@ -70,7 +70,7 @@ export function LogoWithText({
       <span
         className={cn(
           "font-bold tracking-tighter text-foreground select-none",
-          textClassName
+          textClassName,
         )}
         style={{ fontSize: size * 0.8 }}
       >
@@ -79,5 +79,3 @@ export function LogoWithText({
     </div>
   );
 }
-
-

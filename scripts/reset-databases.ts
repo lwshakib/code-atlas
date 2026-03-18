@@ -12,7 +12,10 @@ async function resetDatabases() {
 
   if (neo4jUri && neo4jUser && neo4jPass) {
     console.log("🔗 Connecting to Neo4j...");
-    const driver = neo4j.driver(neo4jUri, neo4j.auth.basic(neo4jUser, neo4jPass));
+    const driver = neo4j.driver(
+      neo4jUri,
+      neo4j.auth.basic(neo4jUser, neo4jPass),
+    );
     const session = driver.session();
     try {
       await session.executeWrite((tx) => tx.run("MATCH (n) DETACH DELETE n"));
@@ -24,7 +27,9 @@ async function resetDatabases() {
       await driver.close();
     }
   } else {
-    console.warn("⚠️ Neo4j environment variables missing. Skipping Neo4j reset.");
+    console.warn(
+      "⚠️ Neo4j environment variables missing. Skipping Neo4j reset.",
+    );
   }
 
   // 2. Reset Pinecone
@@ -42,7 +47,9 @@ async function resetDatabases() {
       console.error("❌ Pinecone Reset Error:", err);
     }
   } else {
-    console.warn("⚠️ Pinecone environment variables missing. Skipping Pinecone reset.");
+    console.warn(
+      "⚠️ Pinecone environment variables missing. Skipping Pinecone reset.",
+    );
   }
 
   console.log("🎉 Database reset complete.");

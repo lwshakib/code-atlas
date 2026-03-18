@@ -1,6 +1,6 @@
 /**
  * INDEXING COMPLETE EMAIL TEMPLATE
- * 
+ *
  * Defines the structure of the automated email sent when a codebase indexing run completes.
  * Uses '@react-email/components' for high-fidelity rendering across different mail clients.
  */
@@ -17,9 +17,8 @@ import {
   Preview,
   Section,
   Text,
-} from '@react-email/components';
-import * as React from 'react';
-
+} from "@react-email/components";
+import * as React from "react";
 
 interface IndexingCompleteEmailProps {
   codebaseName: string;
@@ -40,14 +39,12 @@ export const IndexingCompleteEmail = ({
         </Section>
         <Section style={contentSection}>
           <Text style={text}>
-            Good news! We&apos;ve finished indexing <strong>{codebaseName}</strong>.
-            Your architectural map, developer wiki, and agentic chat are now fully
-            initialized and ready for exploration.
+            Good news! We&apos;ve finished indexing{" "}
+            <strong>{codebaseName}</strong>. Your architectural map, developer
+            wiki, and agentic chat are now fully initialized and ready for
+            exploration.
           </Text>
-          <Button
-            style={button}
-            href={codebaseUrl}
-          >
+          <Button style={button} href={codebaseUrl}>
             Explore Codebase
           </Button>
         </Section>
@@ -70,70 +67,70 @@ export const IndexingCompleteEmail = ({
 export default IndexingCompleteEmail;
 
 const main = {
-  backgroundColor: '#ffffff',
+  backgroundColor: "#ffffff",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
 
 const container = {
-  margin: '0 auto',
-  padding: '20px 0 48px',
-  maxWidth: '580px',
+  margin: "0 auto",
+  padding: "20px 0 48px",
+  maxWidth: "580px",
 };
 
 const headerSection = {
-  padding: '32px 0 24px',
+  padding: "32px 0 24px",
 };
 
 const h1 = {
-  color: '#000000',
-  fontSize: '24px',
-  fontWeight: '600',
-  lineHeight: '1.25',
-  margin: '0',
-  letterSpacing: '-0.05em',
+  color: "#000000",
+  fontSize: "24px",
+  fontWeight: "600",
+  lineHeight: "1.25",
+  margin: "0",
+  letterSpacing: "-0.05em",
 };
 
 const contentSection = {
-  padding: '0 0 40px',
+  padding: "0 0 40px",
 };
 
 const text = {
-  color: '#444444',
-  fontSize: '16px',
-  lineHeight: '26px',
-  margin: '0 0 24px',
+  color: "#444444",
+  fontSize: "16px",
+  lineHeight: "26px",
+  margin: "0 0 24px",
 };
 
 const button = {
-  backgroundColor: '#000000',
-  borderRadius: '8px',
-  color: '#ffffff',
-  fontSize: '14px',
-  fontWeight: '600',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'block',
-  width: 'fit-content',
-  padding: '12px 24px',
+  backgroundColor: "#000000",
+  borderRadius: "8px",
+  color: "#ffffff",
+  fontSize: "14px",
+  fontWeight: "600",
+  textDecoration: "none",
+  textAlign: "center" as const,
+  display: "block",
+  width: "fit-content",
+  padding: "12px 24px",
 };
 
 const hr = {
-  borderColor: '#eaeaea',
-  margin: '20px 0',
+  borderColor: "#eaeaea",
+  margin: "20px 0",
 };
 
 const footer = {
-  padding: '0 0 24px',
+  padding: "0 0 24px",
 };
 
 const footerText = {
-  color: '#666666',
-  fontSize: '12px',
-  lineHeight: '24px',
+  color: "#666666",
+  fontSize: "12px",
+  lineHeight: "24px",
 };
 
 const link = {
-  color: '#000000',
-  textDecoration: 'none',
+  color: "#000000",
+  textDecoration: "none",
 };

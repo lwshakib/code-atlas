@@ -1,8 +1,8 @@
 /**
  * REALTIME SUBSCRIPTION TOKEN GENERATOR
- * 
- * This endpoint provides a short-lived, scoped JWT for the frontend to connect to 
- * Inngest Realtime. This allows the client to listen for events (like indexing status) 
+ *
+ * This endpoint provides a short-lived, scoped JWT for the frontend to connect to
+ * Inngest Realtime. This allows the client to listen for events (like indexing status)
  * without exposing sensitive master keys.
  */
 
@@ -31,7 +31,10 @@ export async function POST(req: Request) {
     const { codebaseId } = await req.json();
 
     if (!codebaseId) {
-      return NextResponse.json({ error: "Codebase ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Codebase ID is required" },
+        { status: 400 },
+      );
     }
 
     /**
@@ -50,7 +53,9 @@ export async function POST(req: Request) {
     return NextResponse.json(token);
   } catch (error: unknown) {
     console.error("API POST /api/codebases/realtime/token error:", error);
-    return NextResponse.json({ error: "Failed to generate subscription token" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate subscription token" },
+      { status: 500 },
+    );
   }
 }
-

@@ -1,14 +1,13 @@
 /**
  * BACKGROUND CANVAS COMPONENT
- * 
+ *
  * Renders a high-performance, dynamic WebGL background using a custom fragment shader.
  * This creates the animated "Obsidian Plasma" aesthetic seen on the landing page.
  */
 
 "use client";
 
-import React, { useEffect, useRef } from 'react';
-
+import React, { useEffect, useRef } from "react";
 
 const BackgroundCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -17,9 +16,9 @@ const BackgroundCanvas: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl');
+    const gl = canvas.getContext("webgl");
     if (!gl) {
-      console.error('WebGL not supported');
+      console.error("WebGL not supported");
       return;
     }
 
@@ -120,13 +119,20 @@ const BackgroundCanvas: React.FC = () => {
         }
     `;
 
-    function loadShader(gl: WebGLRenderingContext, type: number, source: string) {
+    function loadShader(
+      gl: WebGLRenderingContext,
+      type: number,
+      source: string,
+    ) {
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        console.error(
+          "An error occurred compiling the shaders: " +
+            gl.getShaderInfoLog(shader),
+        );
         gl.deleteShader(shader);
         return null;
       }
@@ -144,29 +150,27 @@ const BackgroundCanvas: React.FC = () => {
     gl.linkProgram(shaderProgram);
 
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-      console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+      console.error(
+        "Unable to initialize the shader program: " +
+          gl.getProgramInfoLog(shaderProgram),
+      );
       return;
     }
 
     const programInfo = {
       program: shaderProgram,
       attribLocations: {
-        vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
       },
       uniformLocations: {
-        resolution: gl.getUniformLocation(shaderProgram, 'iResolution'),
-        time: gl.getUniformLocation(shaderProgram, 'iTime'),
+        resolution: gl.getUniformLocation(shaderProgram, "iResolution"),
+        time: gl.getUniformLocation(shaderProgram, "iTime"),
       },
     };
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    const positions = [
-      -1.0, -1.0,
-      1.0, -1.0,
-      -1.0, 1.0,
-      1.0, 1.0,
-    ];
+    const positions = [-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
     function resizeCanvas() {
@@ -176,7 +180,7 @@ const BackgroundCanvas: React.FC = () => {
       gl!.viewport(0, 0, canvas.width, canvas.height);
     }
 
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
     let animationFrameId: number;
@@ -188,11 +192,22 @@ const BackgroundCanvas: React.FC = () => {
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(programInfo.program);
-      gl.uniform2f(programInfo.uniformLocations.resolution, canvas?.width || 0, canvas?.height || 0);
+      gl.uniform2f(
+        programInfo.uniformLocations.resolution,
+        canvas?.width || 0,
+        canvas?.height || 0,
+      );
       gl.uniform1f(programInfo.uniformLocations.time, currentTime);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexPosition,
+        2,
+        gl.FLOAT,
+        false,
+        0,
+        0,
+      );
       gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -202,14 +217,25 @@ const BackgroundCanvas: React.FC = () => {
     render();
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener("resize", resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
   return (
-    <div className="fixed top-0 w-full h-screen -z-10" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)' }}>
-      <canvas ref={canvasRef} className="absolute w-full h-full top-0 left-0 -z-10" />
+    <div
+      className="fixed top-0 w-full h-screen -z-10"
+      style={{
+        maskImage:
+          "linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)",
+        WebkitMaskImage:
+          "linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)",
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        className="absolute w-full h-full top-0 left-0 -z-10"
+      />
     </div>
   );
 };

@@ -1,22 +1,18 @@
 /**
  * CODEBASE DASHBOARD
- * 
- * This page displays a list of the user's synchronize codebases and provides 
- * tools to import new ones from GitHub. It manages repository fetching, 
+ *
+ * This page displays a list of the user's synchronize codebases and provides
+ * tools to import new ones from GitHub. It manages repository fetching,
  * indexing status tracking, and basic CRUD operations (Rename/Delete).
  */
 
 "use client";
 
-import React from 'react';
-import { 
-  Github,
-  Plus,
-  LayoutDashboard
-} from 'lucide-react';
-import { LogoWithText } from '@/components/Logo';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import React from "react";
+import { Github, Plus, LayoutDashboard } from "lucide-react";
+import { LogoWithText } from "@/components/Logo";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -25,35 +21,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Link from 'next/link';
-import { authClient } from '@/lib/auth-client';
-import { UserMenu } from '@/components/UserMenu';
+import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
+import { UserMenu } from "@/components/UserMenu";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  Link as LinkIcon, 
-  Download, 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Link as LinkIcon,
+  Download,
   ArrowRight,
   Loader2,
   AlertCircle,
   RefreshCw,
   Lock,
   Search,
-  Trash2
-} from 'lucide-react';
+  Trash2,
+} from "lucide-react";
 import { fetchGithubRepositoriesAction } from "@/actions/github"; // Action to fetch user repos via Octokit
 import { GithubRepo } from "@/actions/github";
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { CodebaseRow } from '@/components/CodebaseRow'; // Individual row component with Realtime status
+import { CodebaseRow } from "@/components/CodebaseRow"; // Individual row component with Realtime status
 
 interface Codebase {
   id: string;
@@ -68,10 +64,12 @@ export default function CodebasePage() {
   // 1. UI STATE
   const [scrolled, setScrolled] = React.useState(false); // Header aesthetic state
   const [isNewCodebaseOpen, setIsNewCodebaseOpen] = React.useState(false); // Modal visibility
-  const [dialogView, setDialogView] = React.useState<'selection' | 'url' | 'import'>('selection'); // Modal routing state
-  
+  const [dialogView, setDialogView] = React.useState<
+    "selection" | "url" | "import"
+  >("selection"); // Modal routing state
+
   // 2. REPOSITORY & SEARCH STATE
-  const [repoUrl, setRepoUrl] = React.useState(""); 
+  const [repoUrl, setRepoUrl] = React.useState("");
   const [repositories, setRepositories] = React.useState<GithubRepo[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isLoadingRepos, setIsLoadingRepos] = React.useState(false);
@@ -84,16 +82,17 @@ export default function CodebasePage() {
   // 3. CODEBASE LIST STATE
   const [userCodebases, setUserCodebases] = React.useState<Codebase[]>([]);
   const [isLoadingCodebases, setIsLoadingCodebases] = React.useState(true);
-  
+
   // 4. CRUD DIALOG STATE
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedCodebase, setSelectedCodebase] = React.useState<Codebase | null>(null);
+  const [selectedCodebase, setSelectedCodebase] =
+    React.useState<Codebase | null>(null);
   const [newName, setNewName] = React.useState("");
   const [isActionLoading, setIsActionLoading] = React.useState(false); // Loading state for Rename/Delete buttons
-  
+
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  
+
   // 5. SESSION
   const { data: session } = authClient.useSession();
 
@@ -123,7 +122,7 @@ export default function CodebasePage() {
   const fetchUserCodebases = React.useCallback(async () => {
     setIsLoadingCodebases(true);
     try {
-      const response = await fetch('/api/codebases');
+      const response = await fetch("/api/codebases");
       const result = await response.json();
       if (result.success && result.data) {
         setUserCodebases(result.data);
@@ -139,39 +138,44 @@ export default function CodebasePage() {
    * HANDLE INDEXING
    * Sends a POST request to /api/codebases to start the background indexing process.
    */
-  const handleIndex = React.useCallback(async (repoFullName: string) => {
-    setIsIndexing(true);
-    toast.loading("Starting codebase indexing...", { id: "indexing" });
-    
-    try {
-      const response = await fetch('/api/codebases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoFullName }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success("Codebase indexing started!", { id: "indexing" });
-        setIsNewCodebaseOpen(false);
-        fetchUserCodebases(); // Refresh the list to show the new pending entry
-      } else {
-        toast.error(result.error || "Failed to index codebase", { id: "indexing" });
+  const handleIndex = React.useCallback(
+    async (repoFullName: string) => {
+      setIsIndexing(true);
+      toast.loading("Starting codebase indexing...", { id: "indexing" });
+
+      try {
+        const response = await fetch("/api/codebases", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoFullName }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          toast.success("Codebase indexing started!", { id: "indexing" });
+          setIsNewCodebaseOpen(false);
+          fetchUserCodebases(); // Refresh the list to show the new pending entry
+        } else {
+          toast.error(result.error || "Failed to index codebase", {
+            id: "indexing",
+          });
+        }
+      } catch {
+        toast.error("An unexpected error occurred", { id: "indexing" });
+      } finally {
+        setIsIndexing(false);
       }
-    } catch {
-      toast.error("An unexpected error occurred", { id: "indexing" });
-    } finally {
-      setIsIndexing(false);
-    }
-  }, [fetchUserCodebases]);
+    },
+    [fetchUserCodebases],
+  );
 
   /**
    * REMOVE CODEBASE (UI Only)
    * Local state helper to remove a codebase from the list after deletion.
    */
   const removeCodebase = (id: string) => {
-    setUserCodebases(prev => prev.filter(cb => cb.id !== id));
+    setUserCodebases((prev) => prev.filter((cb) => cb.id !== id));
   };
 
   /**
@@ -181,11 +185,11 @@ export default function CodebasePage() {
   React.useEffect(() => {
     if (session) {
       fetchUserCodebases();
-      
+
       // Auto-start indexing if a repo was selected on the landing page
-      const pendingRepo = localStorage.getItem('pending_repo_url');
+      const pendingRepo = localStorage.getItem("pending_repo_url");
       if (pendingRepo) {
-        localStorage.removeItem('pending_repo_url');
+        localStorage.removeItem("pending_repo_url");
         handleIndex(pendingRepo);
       }
     }
@@ -197,16 +201,16 @@ export default function CodebasePage() {
    */
   const loadMore = async () => {
     if (isFetchingMore || !hasMore || searchQuery) return;
-    
+
     setIsFetchingMore(true);
     const nextPage = page + 1;
     const result = await fetchGithubRepositoriesAction(nextPage);
-    
+
     if (result.success && result.data) {
       if (result.data.length === 0) {
         setHasMore(false);
       } else {
-        setRepositories(prev => [...prev, ...result.data!]);
+        setRepositories((prev) => [...prev, ...result.data!]);
         setPage(nextPage);
         if (result.data.length < 20) setHasMore(false);
       }
@@ -229,7 +233,7 @@ export default function CodebasePage() {
    * AUTO-FETCH REPOS ON DIALOG CHANGE
    */
   React.useEffect(() => {
-    if (dialogView === 'import' && session && repositories.length === 0) {
+    if (dialogView === "import" && session && repositories.length === 0) {
       fetchRepos();
     }
   }, [dialogView, session, repositories.length]);
@@ -239,8 +243,8 @@ export default function CodebasePage() {
    */
   const handleSignIn = async () => {
     await authClient.signIn.social({
-      provider: 'github',
-      callbackURL: '/codebase',
+      provider: "github",
+      callbackURL: "/codebase",
     });
   };
 
@@ -264,34 +268,36 @@ export default function CodebasePage() {
     const handleWindowScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleWindowScroll);
-    return () => window.removeEventListener('scroll', handleWindowScroll);
+    window.addEventListener("scroll", handleWindowScroll);
+    return () => window.removeEventListener("scroll", handleWindowScroll);
   }, []);
-  
+
   /**
    * RENAME HANDLER
    * Optimistically updates the UI and sends a PATCH request to the API.
    */
   const handleRename = async () => {
     if (!selectedCodebase || !newName.trim()) return;
-    
+
     const originalCodebases = [...userCodebases]; // Snapshot for rollback
 
     // Optimistically update the UI
-    setUserCodebases(prev => prev.map(cb => 
-      cb.id === selectedCodebase.id ? { ...cb, name: newName.trim() } : cb
-    ));
-    setIsRenameDialogOpen(false); 
-    
+    setUserCodebases((prev) =>
+      prev.map((cb) =>
+        cb.id === selectedCodebase.id ? { ...cb, name: newName.trim() } : cb,
+      ),
+    );
+    setIsRenameDialogOpen(false);
+
     try {
       const response = await fetch(`/api/codebases/${selectedCodebase.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName.trim() }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         toast.success("Codebase renamed successfully");
       } else {
@@ -313,11 +319,11 @@ export default function CodebasePage() {
     setIsActionLoading(true);
     try {
       const response = await fetch(`/api/codebases/${selectedCodebase.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         toast.success("Codebase deleted successfully");
         setIsDeleteDialogOpen(false);
@@ -332,21 +338,24 @@ export default function CodebasePage() {
     }
   };
 
-
   const handleOpenChange = (open: boolean) => {
     setIsNewCodebaseOpen(open);
     if (!open) {
       // Reset view when closing
-      setTimeout(() => setDialogView('selection'), 300);
+      setTimeout(() => setDialogView("selection"), 300);
     }
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? 'bg-background/80 backdrop-blur-md border-b border-border py-2' : 'bg-transparent py-2'
-      }`}>
+      <nav
+        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-background/80 backdrop-blur-md border-b border-border py-2"
+            : "bg-transparent py-2"
+        }`}
+      >
         <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex items-center w-1/3">
@@ -358,9 +367,9 @@ export default function CodebasePage() {
           {/* Right: Actions */}
           <div className="flex items-center justify-end w-1/3 gap-3">
             {!session ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="flex items-center gap-2 h-9 rounded-full px-5 border-border/50 bg-transparent hover:bg-secondary/50"
                 onClick={handleSignIn}
               >
@@ -378,10 +387,14 @@ export default function CodebasePage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">My Codebases</h1>
-            <p className="text-muted-foreground text-sm mt-1">Manage and analyze your synchronized repositories.</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              Manage and analyze your synchronized repositories.
+            </p>
           </div>
-          <Button 
-            onClick={() => !session ? handleSignIn() : setIsNewCodebaseOpen(true)}
+          <Button
+            onClick={() =>
+              !session ? handleSignIn() : setIsNewCodebaseOpen(true)
+            }
             size="sm"
             className="rounded-full h-10 px-6 gap-2 bg-white text-black hover:bg-white/90 border-none transition-all shadow-lg shadow-white/5 active:scale-95"
           >
@@ -395,9 +408,15 @@ export default function CodebasePage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/50 hover:bg-transparent bg-secondary/5">
-                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Name</TableHead>
-                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Description</TableHead>
-                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">Indexed</TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">
+                    Name
+                  </TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">
+                    Description
+                  </TableHead>
+                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">
+                    Indexed
+                  </TableHead>
                   <TableHead className="w-[5%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -435,12 +454,15 @@ export default function CodebasePage() {
             </div>
             <h2 className="text-xl font-semibold">No codebases yet</h2>
             <p className="text-muted-foreground text-sm mt-2 max-w-xs mx-auto">
-              Index your first repository to start analyzing and generating insights.
+              Index your first repository to start analyzing and generating
+              insights.
             </p>
-            <Button 
+            <Button
               variant="outline"
               className="mt-8 rounded-full h-10 px-8 border-primary/20 hover:bg-primary/5"
-              onClick={() => !session ? handleSignIn() : setIsNewCodebaseOpen(true)}
+              onClick={() =>
+                !session ? handleSignIn() : setIsNewCodebaseOpen(true)
+              }
             >
               Get Started
             </Button>
@@ -450,17 +472,23 @@ export default function CodebasePage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/50 hover:bg-transparent bg-secondary/5">
-                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Name</TableHead>
-                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">Description</TableHead>
-                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">Indexed</TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">
+                    Name
+                  </TableHead>
+                  <TableHead className="w-[40%] text-xs font-semibold text-muted-foreground/80 h-10 align-middle">
+                    Description
+                  </TableHead>
+                  <TableHead className="w-[15%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle">
+                    Indexed
+                  </TableHead>
                   <TableHead className="w-[5%] text-xs font-semibold text-muted-foreground/80 text-right h-10 align-middle"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="[&_tr:last-child]:border-0 bg-transparent">
                 {userCodebases.map((cb) => (
-                  <CodebaseRow 
-                    key={cb.id} 
-                    codebase={cb} 
+                  <CodebaseRow
+                    key={cb.id}
+                    codebase={cb}
                     onRename={(cb) => {
                       setSelectedCodebase(cb);
                       setNewName(cb.name);
@@ -472,7 +500,11 @@ export default function CodebasePage() {
                     }}
                     removeCodebase={removeCodebase}
                     onStatusChange={(id, newStatus) => {
-                      setUserCodebases(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+                      setUserCodebases((prev) =>
+                        prev.map((c) =>
+                          c.id === id ? { ...c, status: newStatus } : c,
+                        ),
+                      );
                     }}
                   />
                 ))}
@@ -489,112 +521,137 @@ export default function CodebasePage() {
             <header className="mb-8 flex items-center justify-between">
               <div>
                 <DialogTitle className="text-xl font-bold tracking-tight">
-                  {dialogView === 'selection' ? 'Add new codebase' : 
-                   dialogView === 'url' ? 'GitHub Public URL' : 'Import Repositories'}
+                  {dialogView === "selection"
+                    ? "Add new codebase"
+                    : dialogView === "url"
+                      ? "GitHub Public URL"
+                      : "Import Repositories"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-1">
-                  {dialogView === 'selection' ? 'Connect your repository to begin.' : 
-                   dialogView === 'url' ? 'Paste a link to any public repository.' : 
-                   'Select an existing GitHub project.'}
+                  {dialogView === "selection"
+                    ? "Connect your repository to begin."
+                    : dialogView === "url"
+                      ? "Paste a link to any public repository."
+                      : "Select an existing GitHub project."}
                 </DialogDescription>
               </div>
-              {dialogView !== 'selection' && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+              {dialogView !== "selection" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="rounded-full px-3 h-8 bg-secondary/30 hover:bg-secondary/50 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-all"
-                  onClick={() => setDialogView('selection')}
+                  onClick={() => setDialogView("selection")}
                 >
                   Back
                 </Button>
               )}
             </header>
-            
+
             <div className="flex-1">
-              {dialogView === 'selection' && (
+              {dialogView === "selection" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-300">
-                  <button 
+                  <button
                     className="flex flex-col items-center justify-center p-6 rounded-2xl border border-border/40 bg-secondary/10 hover:bg-secondary/20 hover:border-primary/20 transition-all group text-center h-full"
-                    onClick={() => setDialogView('url')}
+                    onClick={() => setDialogView("url")}
                   >
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-105 transition-transform duration-300">
                       <LinkIcon className="w-5 h-5" />
                     </div>
-                    <span className="font-bold text-sm block mb-1 tracking-tight">Public URL</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight px-2">Analyze any public repo instantly.</span>
+                    <span className="font-bold text-sm block mb-1 tracking-tight">
+                      Public URL
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight px-2">
+                      Analyze any public repo instantly.
+                    </span>
                   </button>
 
-                  <button 
+                  <button
                     className="flex flex-col items-center justify-center p-6 rounded-2xl border border-border/40 bg-secondary/10 hover:bg-secondary/20 hover:border-primary/20 transition-all group text-center h-full"
-                    onClick={() => setDialogView('import')}
+                    onClick={() => setDialogView("import")}
                   >
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-105 transition-transform duration-300">
                       <Download className="w-5 h-5" />
                     </div>
-                    <span className="font-bold text-sm block mb-1 tracking-tight">Import Repo</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight px-2">Connect and sync your own projects.</span>
+                    <span className="font-bold text-sm block mb-1 tracking-tight">
+                      Import Repo
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight px-2">
+                      Connect and sync your own projects.
+                    </span>
                   </button>
                 </div>
               )}
 
-              {dialogView === 'url' && (
+              {dialogView === "url" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="url" className="text-[10px] font-bold text-muted-foreground ml-1">Repository endpoint</Label>
+                    <Label
+                      htmlFor="url"
+                      className="text-[10px] font-bold text-muted-foreground ml-1"
+                    >
+                      Repository endpoint
+                    </Label>
                     <div className="relative group">
-                      <Input 
+                      <Input
                         id="url"
-                        placeholder="https://github.com/username/repository" 
+                        placeholder="https://github.com/username/repository"
                         className="bg-secondary/20 h-14 border-border/50 focus-visible:ring-primary/20 rounded-xl pl-5 pr-14 transition-all text-sm"
                         value={repoUrl}
                         onChange={(e) => setRepoUrl(e.target.value)}
                         autoFocus
                       />
                       <div className="absolute right-2 top-2">
-                        <Button 
-                          size="icon" 
+                        <Button
+                          size="icon"
                           className="h-10 w-10 rounded-lg shadow-md hover:scale-105 active:scale-95 transition-all bg-primary text-primary-foreground"
                           onClick={handleUrlSubmit}
                           disabled={isIndexing || !repoUrl}
                         >
-                          {isIndexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                          {isIndexing ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ArrowRight className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
                     <p className="text-[10px] text-muted-foreground leading-normal italic">
-                      Public repositories are processed and cached for fast access.
+                      Public repositories are processed and cached for fast
+                      access.
                     </p>
                   </div>
                 </div>
               )}
 
-              {dialogView === 'import' && (
+              {dialogView === "import" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col h-full">
                   <div className="flex items-center justify-between mb-3 px-1 gap-3">
                     <div className="relative flex-1 group">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
-                      <Input 
-                        placeholder="Search repos..." 
+                      <Input
+                        placeholder="Search repos..."
                         className="bg-secondary/15 h-8 border-border/40 focus-visible:ring-primary/10 rounded-lg pl-8 pr-2 text-[10px] transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                       onClick={fetchRepos}
                       disabled={isLoadingRepos}
                       title="Refresh repositories"
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isLoadingRepos ? 'animate-spin' : ''}`} />
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${isLoadingRepos ? "animate-spin" : ""}`}
+                      />
                     </Button>
                   </div>
 
-                  <div 
+                  <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     className="flex-1 overflow-y-auto space-y-1.5 pr-1.5 custom-scrollbar min-h-[220px] max-h-[300px]"
@@ -602,7 +659,10 @@ export default function CodebasePage() {
                     {isLoadingRepos && repositories.length === 0 ? (
                       <div className="space-y-1.5">
                         {[1, 2, 3, 4, 5].map((i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border/20 bg-secondary/5 opacity-60">
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-border/20 bg-secondary/5 opacity-60"
+                          >
                             <div className="h-8 w-8 rounded-lg bg-background border border-border/50 items-center justify-center flex shrink-0 shadow-sm overflow-hidden">
                               <Skeleton className="h-full w-full opacity-30" />
                             </div>
@@ -619,50 +679,78 @@ export default function CodebasePage() {
                     ) : repoError ? (
                       <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-destructive/5 rounded-2xl border border-destructive/10">
                         <AlertCircle className="w-6 h-6 text-destructive/40 mb-3" />
-                        <p className="text-[10px] font-semibold text-destructive/80 mb-3">{repoError}</p>
-                        <Button variant="outline" size="sm" className="h-8 rounded-lg text-[9px] font-bold" onClick={fetchRepos}>
+                        <p className="text-[10px] font-semibold text-destructive/80 mb-3">
+                          {repoError}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-lg text-[9px] font-bold"
+                          onClick={fetchRepos}
+                        >
                           Try Again
                         </Button>
                       </div>
-                    ) : repositories.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                    ) : repositories.filter((r) =>
+                        r.name
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase()),
+                      ).length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center py-12 space-y-3 opacity-50">
                         <Github className="w-8 h-8 text-muted-foreground/30" />
-                        <p className="text-[10px] text-muted-foreground">{searchQuery ? 'No matching repos found.' : 'No repositories found.'}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {searchQuery
+                            ? "No matching repos found."
+                            : "No repositories found."}
+                        </p>
                       </div>
                     ) : (
                       <>
                         {repositories
-                          .filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .filter((r) =>
+                            r.name
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase()),
+                          )
                           .map((repo) => (
-                          <div 
-                            key={repo.id} 
-                            className={`flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group ${isIndexing ? 'opacity-50 pointer-events-none' : ''}`}
-                            onClick={() => handleIndex(repo.full_name)}
-                          >
-                            <div className="flex items-center gap-3 overflow-hidden">
-                              <div className="hidden sm:flex flex-shrink-0 w-8 h-8 rounded-lg bg-background border border-border/50 items-center justify-center shadow-sm group-hover:bg-primary/5 transition-colors">
-                                <Github className="w-4 h-4 text-primary/70" />
-                              </div>
-                              <div className="overflow-hidden">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-xs font-bold truncate tracking-tight">{repo.name}</p>
-                                  {repo.private && (
-                                    <Lock className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
-                                  )}
+                            <div
+                              key={repo.id}
+                              className={`flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group ${isIndexing ? "opacity-50 pointer-events-none" : ""}`}
+                              onClick={() => handleIndex(repo.full_name)}
+                            >
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="hidden sm:flex flex-shrink-0 w-8 h-8 rounded-lg bg-background border border-border/50 items-center justify-center shadow-sm group-hover:bg-primary/5 transition-colors">
+                                  <Github className="w-4 h-4 text-primary/70" />
                                 </div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {repo.language && (
-                                    <span className="text-[9px] text-muted-foreground font-medium">{repo.language}</span>
-                                  )}
-                                  <span className="text-[9px] text-muted-foreground/60">
-                                    {repo.updated_at ? formatDistanceToNow(new Date(repo.updated_at), { addSuffix: true }) : 'Recently'}
-                                  </span>
+                                <div className="overflow-hidden">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs font-bold truncate tracking-tight">
+                                      {repo.name}
+                                    </p>
+                                    {repo.private && (
+                                      <Lock className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {repo.language && (
+                                      <span className="text-[9px] text-muted-foreground font-medium">
+                                        {repo.language}
+                                      </span>
+                                    )}
+                                    <span className="text-[9px] text-muted-foreground/60">
+                                      {repo.updated_at
+                                        ? formatDistanceToNow(
+                                            new Date(repo.updated_at),
+                                            { addSuffix: true },
+                                          )
+                                        : "Recently"}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                              <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0 transition-all flex-shrink-0" />
                             </div>
-                            <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0 transition-all flex-shrink-0" />
-                          </div>
-                        ))}
+                          ))}
                         {isFetchingMore && (
                           <div className="flex items-center gap-3 p-3 rounded-xl border border-border/20 bg-secondary/5 opacity-60">
                             <div className="h-8 w-8 rounded-lg bg-background border border-border/50 items-center justify-center flex shrink-0 shadow-sm overflow-hidden">
@@ -688,15 +776,22 @@ export default function CodebasePage() {
         <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-border/40 bg-background/95 backdrop-blur-3xl rounded-3xl shadow-2xl">
           <div className="p-8">
             <DialogHeader className="mb-6">
-              <DialogTitle className="text-xl font-bold tracking-tight">Rename Codebase</DialogTitle>
+              <DialogTitle className="text-xl font-bold tracking-tight">
+                Rename Codebase
+              </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
                 Enter a new name for your codebase.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="newName" className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-wider">Name</Label>
-                <Input 
+                <Label
+                  htmlFor="newName"
+                  className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-wider"
+                >
+                  Name
+                </Label>
+                <Input
                   id="newName"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -706,19 +801,27 @@ export default function CodebasePage() {
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1 rounded-xl h-12 text-xs font-bold border-border/50 hover:bg-secondary/50"
                   onClick={() => setIsRenameDialogOpen(false)}
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className="flex-1 rounded-xl h-12 text-xs font-bold bg-white text-black hover:bg-white/90"
                   onClick={handleRename}
-                  disabled={isActionLoading || !newName.trim() || newName === selectedCodebase?.name}
+                  disabled={
+                    isActionLoading ||
+                    !newName.trim() ||
+                    newName === selectedCodebase?.name
+                  }
                 >
-                  {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+                  {isActionLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Save Changes"
+                  )}
                 </Button>
               </div>
             </div>
@@ -734,26 +837,37 @@ export default function CodebasePage() {
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogHeader className="mb-6 text-left">
-              <DialogTitle className="text-xl font-bold tracking-tight">Delete Codebase</DialogTitle>
+              <DialogTitle className="text-xl font-bold tracking-tight">
+                Delete Codebase
+              </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-foreground">&quot;{selectedCodebase?.name}&quot;</span>? This action cannot be undone and all associated data will be removed.
+                Are you sure you want to delete{" "}
+                <span className="font-bold text-foreground">
+                  &quot;{selectedCodebase?.name}&quot;
+                </span>
+                ? This action cannot be undone and all associated data will be
+                removed.
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-3 mt-8">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1 rounded-xl h-12 text-xs font-bold border-border/50 hover:bg-secondary/50"
                 onClick={() => setIsDeleteDialogOpen(false)}
               >
                 Keep it
               </Button>
-              <Button 
+              <Button
                 variant="destructive"
                 className="flex-1 rounded-xl h-12 text-xs font-bold shadow-lg shadow-destructive/10"
                 onClick={handleDelete}
                 disabled={isActionLoading}
               >
-                {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
+                {isActionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Delete Forever"
+                )}
               </Button>
             </div>
           </div>

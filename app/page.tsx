@@ -1,40 +1,40 @@
 /**
  * LANDING PAGE (Hero/Landing)
- * 
+ *
  * This is the public-facing entry point of the application.
  * It features high-fidelity animations, a dynamic WebGL background, and a GitHub repository importer.
  */
 
 "use client";
 
-import React from 'react';
-import { 
-  Github, 
-  Link as LinkIcon, 
-  CodeXml, 
-  ArrowRight, 
-  MessageCircle, 
-  ZoomIn, 
-  LayoutDashboard, 
-  Zap, 
-  RefreshCcw, 
-  MessagesSquare, 
-  Search, 
-  Gauge, 
+import React from "react";
+import {
+  Github,
+  Link as LinkIcon,
+  CodeXml,
+  ArrowRight,
+  MessageCircle,
+  ZoomIn,
+  LayoutDashboard,
+  Zap,
+  RefreshCcw,
+  MessagesSquare,
+  Search,
+  Gauge,
   Star,
-  ArrowUpRight
-} from 'lucide-react';
-import BackgroundCanvas from '@/components/background-canvas'; // Path to the WebGL shader component
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { LogoWithText } from '@/components/Logo';
-import Link from 'next/link';
-import Image from 'next/image';
-import { authClient } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
-import { UserMenu } from '@/components/UserMenu';
-import { toast } from 'sonner';
+  ArrowUpRight,
+} from "lucide-react";
+import BackgroundCanvas from "@/components/background-canvas"; // Path to the WebGL shader component
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { LogoWithText } from "@/components/Logo";
+import Link from "next/link";
+import Image from "next/image";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { UserMenu } from "@/components/UserMenu";
+import { toast } from "sonner";
 
 /**
  * SCROLLING CODE COMPONENT
@@ -107,7 +107,9 @@ class ArchitectureMapper {
   `.repeat(6); // Repeat to ensure smooth continuous scrolling
 
   return (
-    <div className={`h-full w-full overflow-hidden relative font-mono text-sm sm:text-base leading-relaxed ${color} select-none`}>
+    <div
+      className={`h-full w-full overflow-hidden relative font-mono text-sm sm:text-base leading-relaxed ${color} select-none`}
+    >
       <div className="animate-scroll-vertical whitespace-pre-wrap">
         {codeSnippet}
       </div>
@@ -121,13 +123,18 @@ class ArchitectureMapper {
  */
 const ScrollingChat = () => {
   const messages = Array.from({ length: 12 }).map((_, i) => ({
-    side: i % 2 === 0 ? 'left' : 'right',
-    width: ['w-2/3', 'w-1/2', 'w-3/4'][i % 3],
+    side: i % 2 === 0 ? "left" : "right",
+    width: ["w-2/3", "w-1/2", "w-3/4"][i % 3],
   }));
 
   const messageItems = [...messages, ...messages].map((m, i) => (
-    <div key={i} className={`flex w-full mb-6 ${m.side === 'right' ? 'justify-end' : 'justify-start'}`}>
-      <div className={`h-16 rounded-2xl border border-border/50 ${m.width} bg-secondary/20 p-4 flex flex-col gap-2`}>
+    <div
+      key={i}
+      className={`flex w-full mb-6 ${m.side === "right" ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`h-16 rounded-2xl border border-border/50 ${m.width} bg-secondary/20 p-4 flex flex-col gap-2`}
+      >
         <div className="h-2 w-1/4 bg-primary/20 rounded-full" />
         <div className="h-2 w-full bg-muted/20 rounded-full" />
         <div className="h-2 w-2/3 bg-muted/20 rounded-full" />
@@ -154,8 +161,8 @@ export default function LandingPage() {
   // 2. Authentication Logic
   const handleSignIn = async () => {
     await authClient.signIn.social({
-      provider: 'github',
-      callbackURL: '/codebase', // Redirect to codebase list after GitHub login
+      provider: "github",
+      callbackURL: "/codebase", // Redirect to codebase list after GitHub login
     });
   };
 
@@ -187,15 +194,17 @@ export default function LandingPage() {
     // Regex check for basic GitHub repository format
     const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
     if (!match) {
-      toast.error("Invalid GitHub URL. Please use a format like: https://github.com/username/repository");
+      toast.error(
+        "Invalid GitHub URL. Please use a format like: https://github.com/username/repository",
+      );
       return;
     }
 
     const repoFullName = match[1];
 
     // Store the desired repository in localStorage so the dashboard can pick it up after login/redirect
-    localStorage.setItem('pending_repo_url', repoFullName);
-    router.push('/codebase');
+    localStorage.setItem("pending_repo_url", repoFullName);
+    router.push("/codebase");
   };
 
   /**
@@ -206,19 +215,22 @@ export default function LandingPage() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="antialiased selection:bg-primary selection:text-primary-foreground text-foreground bg-background min-h-screen font-sans">
-
       <BackgroundCanvas />
 
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? 'bg-background/80 backdrop-blur-md border-b border-border py-2' : 'bg-transparent py-2'
-      }`}>
+      <nav
+        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-background/80 backdrop-blur-md border-b border-border py-2"
+            : "bg-transparent py-2"
+        }`}
+      >
         <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex items-center w-1/3">
@@ -230,9 +242,9 @@ export default function LandingPage() {
           {/* Right: Auth Action */}
           <div className="flex items-center justify-end w-1/3">
             {!session ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="flex items-center gap-2 border-border bg-transparent hover:bg-secondary/50"
                 onClick={handleSignIn}
               >
@@ -250,10 +262,10 @@ export default function LandingPage() {
       <header className="relative w-full h-screen flex flex-col justify-end pb-12 sm:pb-24 px-6 overflow-hidden">
         {/* Background AI Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <Image 
-            src="/hero/hero-background.jpg" 
-            alt="Codebase Atlas Visualization" 
-            className="w-full h-full object-cover object-center opacity-60" 
+          <Image
+            src="/hero/hero-background.jpg"
+            alt="Codebase Atlas Visualization"
+            className="w-full h-full object-cover object-center opacity-60"
             priority
             fill
           />
@@ -261,20 +273,25 @@ export default function LandingPage() {
         </div>
 
         <div className="z-10 w-full max-w-screen-2xl mx-auto relative">
-          <Badge variant="secondary" className="mb-6 px-3 py-1 text-xs font-medium">
+          <Badge
+            variant="secondary"
+            className="mb-6 px-3 py-1 text-xs font-medium"
+          >
             Agentic AI Powered Exploration
           </Badge>
           <h1 className="md:text-7xl lg:text-8xl leading-[0.9] text-5xl text-foreground tracking-tighter max-w-4xl font-oswald font-normal uppercase">
-            EXPLORE YOUR <br /> <span className="text-muted-foreground">CODEBASE.</span>
+            EXPLORE YOUR <br />{" "}
+            <span className="text-muted-foreground">CODEBASE.</span>
           </h1>
-          
+
           <div className="flex flex-col lg:flex-row items-end justify-between mt-12 gap-12 pt-8">
             <div className="w-full max-w-2xl">
               <p className="text-muted-foreground text-sm leading-relaxed mb-8 max-w-lg">
-                Visualize architecture, chat with your logic, and navigate complex repositories with precision. 
-                The ultimate atlas for modern software engineering.
+                Visualize architecture, chat with your logic, and navigate
+                complex repositories with precision. The ultimate atlas for
+                modern software engineering.
               </p>
-              
+
               <div className="flex flex-wrap gap-4">
                 <Link href="/codebase" onClick={handleGetStarted}>
                   <Button size="lg" className="rounded-lg px-8">
@@ -290,24 +307,30 @@ export default function LandingPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <LinkIcon className="w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 </div>
-                <Input 
-                  type="text" 
-                  placeholder="Paste public GitHub repository URL..." 
+                <Input
+                  type="text"
+                  placeholder="Paste public GitHub repository URL..."
                   className="w-full bg-secondary/30 border-border rounded-lg py-6 pl-10 pr-32 text-sm focus-visible:ring-primary/20"
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleExplore()}
+                  onKeyDown={(e) => e.key === "Enter" && handleExplore()}
                 />
-                <Button 
-                  className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6" 
+                <Button
+                  className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6"
                   size="sm"
                   onClick={handleExplore}
                   disabled={isExploring}
                 >
-                  {isExploring ? <RefreshCcw className="w-4 h-4 animate-spin" /> : "Explore"}
+                  {isExploring ? (
+                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Explore"
+                  )}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-3 ml-1">Example: https://github.com/facebook/react</p>
+              <p className="text-[10px] text-muted-foreground mt-3 ml-1">
+                Example: https://github.com/facebook/react
+              </p>
             </div>
           </div>
         </div>
@@ -322,22 +345,30 @@ export default function LandingPage() {
               <div className="mb-4 rounded-full bg-primary/10 p-4 group-hover:scale-110 transition-transform">
                 <CodeXml className="w-12 h-12 text-primary opacity-80" />
               </div>
-              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">Architecture</h3>
-              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">Visualize module dependencies and system flow.</p>
+              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">
+                Architecture
+              </h3>
+              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">
+                Visualize module dependencies and system flow.
+              </p>
             </div>
             <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0 text-primary">
               <ArrowRight className="w-6 h-6" />
             </div>
           </div>
-          
+
           {/* Category 2 */}
           <div className="group relative h-96 overflow-hidden cursor-pointer hover:bg-primary/[0.02] transition-colors">
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
               <div className="mb-4 rounded-full bg-primary/10 p-4 group-hover:scale-110 transition-transform">
                 <MessageCircle className="w-12 h-12 text-primary opacity-80" />
               </div>
-              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">AI Context</h3>
-              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">Ask questions and get answers with deep code awareness.</p>
+              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">
+                AI Context
+              </h3>
+              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">
+                Ask questions and get answers with deep code awareness.
+              </p>
             </div>
             <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0 text-primary">
               <ArrowRight className="w-6 h-6" />
@@ -350,8 +381,12 @@ export default function LandingPage() {
               <div className="mb-4 rounded-full bg-primary/10 p-4 group-hover:scale-110 transition-transform">
                 <ZoomIn className="w-12 h-12 text-primary opacity-80" />
               </div>
-              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">Exploration</h3>
-              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">Semantic search and advanced navigation tools.</p>
+              <h3 className="text-2xl tracking-tight font-oswald uppercase text-foreground">
+                Exploration
+              </h3>
+              <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">
+                Semantic search and advanced navigation tools.
+              </p>
             </div>
             <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0 text-primary">
               <ArrowRight className="w-6 h-6" />
@@ -368,8 +403,9 @@ export default function LandingPage() {
               Read your app <br /> for the first time
             </h2>
             <p className="text-muted-foreground text-lg mb-12 max-w-lg">
-              Code documentation that works for you, not the other way around. 
-              Our AI agent automatically generates and maintains a rich, interactive knowledge base from your code.
+              Code documentation that works for you, not the other way around.
+              Our AI agent automatically generates and maintains a rich,
+              interactive knowledge base from your code.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-16">
@@ -377,9 +413,12 @@ export default function LandingPage() {
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-6">
                   <LayoutDashboard className="w-6 h-6 text-primary" />
                 </div>
-                <h4 className="font-bold text-lg mb-3">Understand your code section by section</h4>
+                <h4 className="font-bold text-lg mb-3">
+                  Understand your code section by section
+                </h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Focus on the code you care about. Pick a section and dive deeper to see exactly how it works.
+                  Focus on the code you care about. Pick a section and dive
+                  deeper to see exactly how it works.
                 </p>
               </div>
 
@@ -387,9 +426,12 @@ export default function LandingPage() {
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-6">
                   <Zap className="w-6 h-6 text-primary" />
                 </div>
-                <h4 className="font-bold text-lg mb-3">Generated automatically</h4>
+                <h4 className="font-bold text-lg mb-3">
+                  Generated automatically
+                </h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Our AI agent automatically generates and maintains a rich, interactive knowledge base from your code.
+                  Our AI agent automatically generates and maintains a rich,
+                  interactive knowledge base from your code.
                 </p>
               </div>
 
@@ -399,7 +441,8 @@ export default function LandingPage() {
                 </div>
                 <h4 className="font-bold text-lg mb-3">Always up-to-date</h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Every time a pull request is merged, the relevant documentation is automatically updated.
+                  Every time a pull request is merged, the relevant
+                  documentation is automatically updated.
                 </p>
               </div>
 
@@ -407,9 +450,13 @@ export default function LandingPage() {
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-6">
                   <LinkIcon className="w-6 h-6 text-primary" />
                 </div>
-                <h4 className="font-bold text-lg mb-3">Linked back to your code</h4>
+                <h4 className="font-bold text-lg mb-3">
+                  Linked back to your code
+                </h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Instantly jump from an architectural overview to the exact service, or from a function&apos;s description to its definition.
+                  Instantly jump from an architectural overview to the exact
+                  service, or from a function&apos;s description to its
+                  definition.
                 </p>
               </div>
             </div>
@@ -439,8 +486,9 @@ export default function LandingPage() {
               Talk to your codebase
             </h2>
             <p className="text-muted-foreground text-lg mb-12 max-w-lg">
-              Ask questions about your architecture, find function definitions, and understand complex logic in natural language. 
-              It&apos;s like having an engineer on call, 24/7.
+              Ask questions about your architecture, find function definitions,
+              and understand complex logic in natural language. It&apos;s like
+              having an engineer on call, 24/7.
             </p>
 
             <div className="space-y-6">
@@ -455,14 +503,18 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
                   <Search className="w-6 h-6 text-primary" />
                 </div>
-                <span className="font-medium">Find what you need instantly</span>
+                <span className="font-medium">
+                  Find what you need instantly
+                </span>
               </div>
 
               <div className="flex items-center gap-4 bg-secondary/30 p-4 rounded-xl border border-border/50 group hover:border-primary/50 transition-colors">
                 <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
                   <Gauge className="w-6 h-6 text-primary" />
                 </div>
-                <span className="font-medium">Low latency, high-quality responses</span>
+                <span className="font-medium">
+                  Low latency, high-quality responses
+                </span>
               </div>
             </div>
           </div>
@@ -473,20 +525,26 @@ export default function LandingPage() {
       <section className="py-32 px-6 max-w-screen-2xl mx-auto">
         <div className="bg-secondary/20 rounded-3xl p-12 lg:p-24 border border-border relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none">
-             <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full transform translate-x-1/2 -translate-y-1/2"></div>
-             <div className="absolute inset-0 bg-purple-500/10 blur-[120px] rounded-full transform translate-x-1/3 translate-y-1/3"></div>
+            <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full transform translate-x-1/2 -translate-y-1/2"></div>
+            <div className="absolute inset-0 bg-purple-500/10 blur-[120px] rounded-full transform translate-x-1/3 translate-y-1/3"></div>
           </div>
-          
+
           <div className="relative z-10 max-w-2xl">
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-8">Try it with your own private repository</h2>
-            
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-8">
+              Try it with your own private repository
+            </h2>
+
             <p className="text-muted-foreground text-lg mb-12">
-              Stop documenting. Start understanding. Connect your repository and get a fully interactive Code Wiki 
-              that stays perfectly in sync with every change. No more stale docs. Ever.
+              Stop documenting. Start understanding. Connect your repository and
+              get a fully interactive Code Wiki that stays perfectly in sync
+              with every change. No more stale docs. Ever.
             </p>
 
             <Link href="/codebase" onClick={handleGetStarted}>
-              <Button size="lg" className="h-16 px-8 rounded-2xl bg-white text-black hover:bg-white/90 group">
+              <Button
+                size="lg"
+                className="h-16 px-8 rounded-2xl bg-white text-black hover:bg-white/90 group"
+              >
                 Get Started
                 <ArrowUpRight className="w-5 h-5 ml-3 opacity-50 group-hover:opacity-100 transition-opacity" />
               </Button>
@@ -498,13 +556,21 @@ export default function LandingPage() {
       {/* Interactive Banner */}
       <section className="py-12 border-y border-border overflow-hidden bg-foreground text-background">
         <div className="flex whitespace-nowrap animate-marquee">
-          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">SEMANTIC SEARCH</span>
+          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">
+            SEMANTIC SEARCH
+          </span>
           <Star className="w-12 h-12 text-background" />
-          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">ARCHITECTURE ANALYSIS</span>
+          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">
+            ARCHITECTURE ANALYSIS
+          </span>
           <Star className="w-12 h-12 text-background" />
-          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">AI CODE ASSISTANCE</span>
+          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">
+            AI CODE ASSISTANCE
+          </span>
           <Star className="w-12 h-12 text-background" />
-          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">CODE ATLAS</span>
+          <span className="text-4xl md:text-6xl tracking-tighter mx-8 font-oswald uppercase">
+            CODE ATLAS
+          </span>
           <Star className="w-12 h-12 text-background" />
         </div>
       </section>
@@ -513,11 +579,23 @@ export default function LandingPage() {
       <footer className="pt-24 pb-12 px-6 max-w-screen-2xl mx-auto">
         <div className="flex flex-col lg:flex-row justify-between items-start gap-12">
           <div className="max-w-md">
-            <h4 className="text-lg font-medium mb-4 text-foreground">Join the list</h4>
-            <p className="text-muted-foreground text-sm mb-6">Receive early access to new drops and exclusive editorial content.</p>
+            <h4 className="text-lg font-medium mb-4 text-foreground">
+              Join the list
+            </h4>
+            <p className="text-muted-foreground text-sm mb-6">
+              Receive early access to new drops and exclusive editorial content.
+            </p>
             <form className="flex w-full max-w-sm border-b border-border pb-2 focus-within:border-primary transition-colors">
-              <input type="email" placeholder="Email address" className="bg-transparent w-full outline-none text-sm placeholder-muted-foreground text-foreground" />
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <input
+                type="email"
+                placeholder="Email address"
+                className="bg-transparent w-full outline-none text-sm placeholder-muted-foreground text-foreground"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </form>
@@ -526,25 +604,70 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-12 lg:gap-24 text-sm">
             <div className="flex flex-col gap-3">
               <span className="text-muted-foreground mb-1">Explore</span>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">Documentation</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">API Reference</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">Community</a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                Documentation
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                API Reference
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                Community
+              </a>
             </div>
             <div className="flex flex-col gap-3">
               <span className="text-muted-foreground mb-1">Company</span>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">About</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">Blog</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">Careers</a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                About
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                Blog
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                Careers
+              </a>
             </div>
             <div className="flex flex-col gap-3">
               <span className="text-muted-foreground mb-1">Social</span>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">GitHub</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">Discord</a>
-              <a href="#" className="hover:text-primary transition-colors text-foreground">X (Twitter)</a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                GitHub
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                Discord
+              </a>
+              <a
+                href="#"
+                className="hover:text-primary transition-colors text-foreground"
+              >
+                X (Twitter)
+              </a>
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-between items-center mt-24 pt-8 border-t border-border text-xs text-muted-foreground">
           <span>© 2024 Code Atlas Studios.</span>
           <div className="flex gap-4">

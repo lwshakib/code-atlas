@@ -1,6 +1,6 @@
 /**
  * INNGEST API ROUTE
- * 
+ *
  * This file serves as the communication bridge between Inngest (the background job orchestrator)
  * and our Next.js application. Inngest calls this endpoint to trigger and manage functions.
  */
@@ -19,4 +19,4 @@ export const { GET, POST, PUT } = serve({
   functions: [
     indexCodebase, // Register the codebase indexing function
   ],
-});
+});

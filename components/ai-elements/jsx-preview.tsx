@@ -250,7 +250,8 @@ export const JSXPreviewContent = memo(
     );
 
     // During streaming, if the current JSX errored, fall back to last good version
-    const displayJsx = isStreaming && hadError ? localLastGoodJsx : processedJsx;
+    const displayJsx =
+      isStreaming && hadError ? localLastGoodJsx : processedJsx;
 
     return (
       <div className={cn("jsx-preview-content", className)} {...props}>

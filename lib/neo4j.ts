@@ -1,12 +1,12 @@
 /**
  * NEO4J DRIVER CONFIGURATION
- * 
+ *
  * This file manages the connection to our graph database.
- * Neo4j is used to store high-level code architecture, file hierarchies, 
+ * Neo4j is used to store high-level code architecture, file hierarchies,
  * and semantic relationships between modules.
  */
 
-import neo4j, { Driver } from 'neo4j-driver';
+import neo4j, { Driver } from "neo4j-driver";
 
 // Connection credentials fetched from environment variables
 const uri = process.env.NEO4J_URI;
@@ -23,7 +23,7 @@ let driver: Driver | null = null;
 export const getNeo4jDriver = (): Driver => {
   if (!driver) {
     if (!uri || !username || !password) {
-      throw new Error('Neo4j environment variables are not set');
+      throw new Error("Neo4j environment variables are not set");
     }
     // Initialize the driver with basic authentication
     driver = neo4j.driver(uri, neo4j.auth.basic(username, password));
@@ -41,4 +41,3 @@ export const closeNeo4jDriver = async () => {
     driver = null;
   }
 };
-

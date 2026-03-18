@@ -13,12 +13,12 @@ import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { Mermaid } from "@/components/ai-elements/mermaid-diagram";
-import { 
-  CodeBlock, 
-  CodeBlockHeader, 
+import {
+  CodeBlock,
+  CodeBlockHeader,
   CodeBlockTitle,
-  CodeBlockActions, 
-  CodeBlockCopyButton
+  CodeBlockActions,
+  CodeBlockCopyButton,
 } from "./code-block";
 import { FileCode } from "lucide-react";
 import type { UIMessage } from "ai";
@@ -337,45 +337,56 @@ export const MessageResponse = memo(
         className,
       )}
       plugins={streamdownPlugins}
-      components={{
-        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-        code: (props: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
-          const { inline, className, children } = props;
-          const match = /language-(\w+)/.exec(className || "");
-          const language = match ? match[1] : null;
-          const codeText = String(children).replace(/\n$/, "");
+      components={
+        {
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+          code: (props: {
+            inline?: boolean;
+            className?: string;
+            children?: React.ReactNode;
+          }) => {
+            const { inline, className, children } = props;
+            const match = /language-(\w+)/.exec(className || "");
+            const language = match ? match[1] : null;
+            const codeText = String(children).replace(/\n$/, "");
 
-          if (inline || !language || !className) {
+            if (inline || !language || !className) {
+              return (
+                <code
+                  className={cn(
+                    "px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80",
+                    className,
+                  )}
+                >
+                  {children}
+                </code>
+              );
+            }
+
+            if (language === "mermaid") {
+              return <Mermaid chart={codeText} className="my-6" />;
+            }
+
             return (
-              <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
-                {children}
-              </code>
+              <CodeBlock
+                code={codeText}
+                language={(language || "text") as BundledLanguage}
+                className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
+              >
+                <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
+                  <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-2">
+                    <FileCode className="w-3.5 h-3.5 text-primary/50" />
+                    {language}
+                  </CodeBlockTitle>
+                  <CodeBlockActions>
+                    <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 transition-all rounded-lg" />
+                  </CodeBlockActions>
+                </CodeBlockHeader>
+              </CodeBlock>
             );
-          }
-
-          if (language === "mermaid") {
-            return <Mermaid chart={codeText} className="my-6" />;
-          }
-
-          return (
-            <CodeBlock 
-              code={codeText} 
-              language={(language || "text") as BundledLanguage}
-              className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
-            >
-              <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
-                <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-2">
-                  <FileCode className="w-3.5 h-3.5 text-primary/50" />
-                  {language}
-                </CodeBlockTitle>
-                <CodeBlockActions>
-                  <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 transition-all rounded-lg" />
-                </CodeBlockActions>
-              </CodeBlockHeader>
-            </CodeBlock>
-          );
-        }
-      } as MessageResponseProps["components"]}
+          },
+        } as MessageResponseProps["components"]
+      }
       {...props}
     />
   ),
@@ -399,12 +410,16 @@ export const ToolCallStatus = ({ toolInvocations }: ToolCallStatusProps) => {
 
   if (!activeTool) return null;
 
-  const label = 
-    activeTool.tool === 'search_codebase' ? 'Querying Codebase' : 
-    activeTool.tool === 'list_files' ? 'Exploring Materials' :
-    activeTool.tool === 'get_file_content' ? 'Analyzing Blueprints' :
-    activeTool.tool === 'query_graph_relations' ? 'Mapping Intelligence' :
-    'Architect is Thinking...';
+  const label =
+    activeTool.tool === "search_codebase"
+      ? "Querying Codebase"
+      : activeTool.tool === "list_files"
+        ? "Exploring Materials"
+        : activeTool.tool === "get_file_content"
+          ? "Analyzing Blueprints"
+          : activeTool.tool === "query_graph_relations"
+            ? "Mapping Intelligence"
+            : "Architect is Thinking...";
 
   return (
     <div className="flex items-center gap-2.5 py-2 w-fit animate-in fade-in slide-in-from-bottom-2">

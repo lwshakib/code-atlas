@@ -1,8 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Oswald:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Oswald:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-
 
 @custom-variant dark (&:is(.dark *));
 
@@ -128,8 +127,13 @@
 }
 
 @layer utilities {
-  .hide-scrollbar::-webkit-scrollbar { display: none; }
-  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   /* Custom Premium Scrollbar */
   ::-webkit-scrollbar {
@@ -158,7 +162,7 @@
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: color-mix(in oklch, var(--muted-foreground) 20%, transparent);
     background-clip: content-box;
@@ -170,43 +174,74 @@
   }
 
   @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
   }
   .animate-marquee {
     animation: marquee 20s linear infinite;
   }
 
   @keyframes scroll-vertical {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
   }
   .animate-scroll-vertical {
     animation: scroll-vertical 30s linear infinite;
   }
 
-  .perspective-none { perspective: none; }
-  .perspective-dramatic { perspective: 100px; }
-  .perspective-near { perspective: 300px; }
-  .perspective-normal { perspective: 500px; }
-  .perspective-midrange { perspective: 800px; }
-  .perspective-distant { perspective: 1200px; }
+  .perspective-none {
+    perspective: none;
+  }
+  .perspective-dramatic {
+    perspective: 100px;
+  }
+  .perspective-near {
+    perspective: 300px;
+  }
+  .perspective-normal {
+    perspective: 500px;
+  }
+  .perspective-midrange {
+    perspective: 800px;
+  }
+  .perspective-distant {
+    perspective: 1200px;
+  }
 
-  .transform-style-preserve-3d { transform-style: preserve-3d; }
-  .transform-style-flat { transform-style: flat; }
+  .transform-style-preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .transform-style-flat {
+    transform-style: flat;
+  }
 
-  .rotate-x-10 { transform: rotateX(10deg); }
+  .rotate-x-10 {
+    transform: rotateX(10deg);
+  }
   /* Add more as needed or use arbitrary values in Tailwind class names if supported */
 }
 
 @keyframes cms-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 .cms-loading {
   position: relative;
   color: transparent !important;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     rgba(128, 128, 128, 0.1) 25%,
     rgba(128, 128, 128, 0.2) 50%,
     rgba(128, 128, 128, 0.1) 75%

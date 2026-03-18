@@ -7,7 +7,7 @@
 - **🧠 Multi-Modal Analysis**: Uses advanced LLMs to extract structural, semantic, and architectural insights from raw source code.
 
 - **🕸️ Graph-Native Architecture**: Maps imports, exports, and function calls into **Neo4j**, enabling complex dependency analysis and visual maps.
-- **🔍 Semantic Search**: Powered by **Pinecone** and Cloudflare's **BGE-M3** embeddings, find *functionality* instead of just *keywords*.
+- **🔍 Semantic Search**: Powered by **Pinecone** and Cloudflare's **BGE-M3** embeddings, find _functionality_ instead of just _keywords_.
 - **⚡ Real-time Indexing**: Background processing via **Inngest** with live status updates delivered through server-side events.
 - **💬 Agentic Chat**: A research-driven chat assistant that autonomously explores your files to answer difficult architecture questions.
 
@@ -15,17 +15,16 @@
 
 ## 🖼️ App Demo
 
-| Landing Page | Dashboard | Code Exploration |
-| :---: | :---: | :---: |
+|                     Landing Page                      |                        Dashboard                        |                     Code Exploration                      |
+| :---------------------------------------------------: | :-----------------------------------------------------: | :-------------------------------------------------------: |
 | <img src="public/app_demo/landing.png" width="250" /> | <img src="public/app_demo/dashboard.png" width="250" /> | <img src="public/app_demo/exploration.png" width="250" /> |
 
 ---
 
 ## 🛠️ Stack
 
-
 - **Framework**: [Next.js 15 (App Router)](https://nextjs.org/)
-- **Databases**: 
+- **Databases**:
   - [**PostgreSQL (Prisma)**](https://www.prisma.io/): Persistent user data & session management.
   - [**Neo4j**](https://neo4j.com/): Graph representation of the codebase.
   - [**Pinecone**](https://www.pinecone.io/): Vector storage for semantic RAG.
@@ -38,6 +37,7 @@
 ## 🏁 Getting Started
 
 ### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/lwshakib/code-atlas.git
 cd code-atlas
@@ -50,22 +50,27 @@ cd code-atlas
 - API Keys for: Pinecone, Resend, and your chosen LLM provider.
 
 ### 2. Environment Setup
+
 Copy the example environment file and fill in your credentials:
+
 ```bash
 cp .env.example .env
 ```
 
 ### 3. Install Dependencies
+
 ```bash
 bun install
 ```
 
 ### 4. Start Infrastructure
+
 ```bash
 docker-compose up -d
 ```
 
 ### 5. Run Development Server
+
 ```bash
 bun dev
 ```
@@ -91,4 +96,3 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) a
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-

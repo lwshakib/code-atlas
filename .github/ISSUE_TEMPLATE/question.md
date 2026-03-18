@@ -1,8 +1,8 @@
 ---
 name: ❓ Question
 about: Ask a question about Code Atlas
-title: '[Q] '
-labels: ['question']
+title: "[Q] "
+labels: ["question"]
 assignees: []
 ---
 

@@ -1,7 +1,7 @@
 /**
  * GLOBAL CONSTANTS
- * 
- * Centralized configuration for indexing batches, LLM token limits, 
+ *
+ * Centralized configuration for indexing batches, LLM token limits,
  * and embedding heuristics. Tuned for Cloudflare Workers & BGE-M3 models.
  */
 
@@ -27,8 +27,7 @@ export const CHARS_PER_TOKEN_ESTIMATE = 1.3;
 
 /**
  * DOCUMENT CHUNK SIZE
- * Each individual document (file content) sent for embedding is capped to avoid 
+ * Each individual document (file content) sent for embedding is capped to avoid
  * exceeding the model's context window per entry.
  */
 export const MAX_EMBEDDING_TEXT_LENGTH = 3000;
-

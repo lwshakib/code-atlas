@@ -1,12 +1,12 @@
 /**
  * PINECONE CLIENT CONFIGURATION
- * 
+ *
  * This file manages the connection to our vector database.
- * Pinecone stores semantic embeddings of code files, enabling RAG 
+ * Pinecone stores semantic embeddings of code files, enabling RAG
  * (Retrieval-Augmented Generation) based search.
  */
 
-import { Pinecone } from '@pinecone-database/pinecone';
+import { Pinecone } from "@pinecone-database/pinecone";
 
 // API Configuration retrieved from environment variables
 const apiKey = process.env.PINECONE_API_KEY;
@@ -22,7 +22,7 @@ let pinecone: Pinecone | null = null;
 export const getPineconeClient = (): Pinecone => {
   if (!pinecone) {
     if (!apiKey) {
-      throw new Error('PINECONE_API_KEY is not set');
+      throw new Error("PINECONE_API_KEY is not set");
     }
     pinecone = new Pinecone({
       apiKey,
@@ -38,8 +38,7 @@ export const getPineconeClient = (): Pinecone => {
 export const getPineconeIndex = () => {
   const client = getPineconeClient();
   if (!indexName) {
-    throw new Error('PINECONE_INDEX is not set');
+    throw new Error("PINECONE_INDEX is not set");
   }
   return client.index(indexName);
 };
-

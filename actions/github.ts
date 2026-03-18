@@ -30,7 +30,7 @@ export interface GithubRepo {
 async function getGithubAccessToken() {
   // Retrieve the session using Better Auth from request headers
   const session = await auth.api.getSession({
-    headers: await headers()
+    headers: await headers(),
   });
 
   // If no session, the user is anonymous
@@ -54,10 +54,12 @@ async function getGithubAccessToken() {
  * Fetches the list of repositories for the authenticated user using Octokit.
  * Supports pagination to handle large numbers of repositories.
  */
-export async function getUserRepositories(page: number = 1): Promise<GithubRepo[]> {
+export async function getUserRepositories(
+  page: number = 1,
+): Promise<GithubRepo[]> {
   // Get the token first
   const token = await getGithubAccessToken();
-  
+
   if (!token) {
     throw new Error("GitHub access token not found. Please log in.");
   }
@@ -68,9 +70,9 @@ export async function getUserRepositories(page: number = 1): Promise<GithubRepo[
   try {
     // Request repositories where the user is an owner or collaborator
     const response = await octokit.request("GET /user/repos", {
-      sort: "updated",           // Sort by recently updated repositories
-      per_page: 20,              // Limit results per page
-      page,                      // Current page index
+      sort: "updated", // Sort by recently updated repositories
+      per_page: 20, // Limit results per page
+      page, // Current page index
       affiliation: "owner,collaborator",
       visibility: "all",
     });
@@ -97,7 +99,9 @@ export async function getUserRepositories(page: number = 1): Promise<GithubRepo[
  * Server action to fetch GitHub repositories.
  * Used by React Server Components or Client Components via 'use action'.
  */
-export async function fetchGithubRepositoriesAction(page: number = 1): Promise<{ success: boolean; data?: GithubRepo[]; error?: string }> {
+export async function fetchGithubRepositoriesAction(
+  page: number = 1,
+): Promise<{ success: boolean; data?: GithubRepo[]; error?: string }> {
   try {
     // Call our shared helper to get the data
     const repos = await getUserRepositories(page);
@@ -106,6 +110,9 @@ export async function fetchGithubRepositoriesAction(page: number = 1): Promise<{
     const err = error as Error;
     console.error("fetchGithubRepositoriesAction error:", err);
     // Return a standard error response for the UI to handle
-    return { success: false, error: err.message || "Failed to fetch repositories" };
+    return {
+      success: false,
+      error: err.message || "Failed to fetch repositories",
+    };
   }
 }

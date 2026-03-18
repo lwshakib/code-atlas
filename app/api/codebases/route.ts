@@ -1,6 +1,6 @@
 /**
  * CODEBASES COLLECTION ROUTE HANDLER
- * 
+ *
  * This file manages the collection of all codebases for the authenticated user.
  * It supports listing all codebases (GET) and initiating the indexing of a new one (POST).
  */
@@ -40,7 +40,10 @@ export async function GET() {
     return NextResponse.json({ success: true, data: codebases });
   } catch (error: unknown) {
     console.error("API GET /api/codebases error:", error);
-    return NextResponse.json({ error: "Failed to fetch codebases" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch codebases" },
+      { status: 500 },
+    );
   }
 }
 
@@ -71,7 +74,10 @@ export async function POST(req: Request) {
     });
 
     if (!account || !account.accessToken) {
-      return NextResponse.json({ error: "GitHub account not connected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "GitHub account not connected" },
+        { status: 400 },
+      );
     }
 
     // Initialize Octokit (GitHub API client) with the user's token
@@ -89,9 +95,13 @@ export async function POST(req: Request) {
     } catch (err: unknown) {
       // Handle the case where the repo is private or doesn't exist
       if (err instanceof Error && (err as { status?: number }).status === 404) {
-        return NextResponse.json({ 
-          error: "Repository not found or private. Please check the URL and ensure your GitHub account has the necessary permissions." 
-        }, { status: 404 });
+        return NextResponse.json(
+          {
+            error:
+              "Repository not found or private. Please check the URL and ensure your GitHub account has the necessary permissions.",
+          },
+          { status: 404 },
+        );
       }
       throw err;
     }
@@ -142,7 +152,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, codebaseId: codebase.id });
   } catch (error: unknown) {
     console.error("API POST /api/codebases error:", error);
-    return NextResponse.json({ error: (error as Error).message || "Failed to start indexing" }, { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message || "Failed to start indexing" },
+      { status: 500 },
+    );
   }
 }
-

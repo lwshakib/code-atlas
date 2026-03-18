@@ -52,22 +52,24 @@ export const Mermaid = ({ chart, className }: MermaidProps) => {
   }, [chart, theme]);
 
   return (
-    <div 
+    <div
       className={cn(
         "relative rounded-xl border border-border bg-card/50 p-6 flex items-center justify-center min-h-[100px] overflow-hidden group/mermaid shadow-lg shadow-black/20",
-        className
+        className,
       )}
       ref={containerRef}
     >
       {isRendering ? (
         <div className="flex items-center gap-2 text-muted-foreground animate-in fade-in duration-500">
           <Loader2 className="h-4 h-4 animate-spin" />
-          <span className="text-xs font-medium uppercase tracking-widest">Generating Diagram...</span>
+          <span className="text-xs font-medium uppercase tracking-widest">
+            Generating Diagram...
+          </span>
         </div>
       ) : (
-        <div 
+        <div
           className="w-full h-full flex justify-center animate-in zoom-in-95 fade-in duration-300 [&>svg]:max-w-full [&>svg]:h-auto"
-          dangerouslySetInnerHTML={{ __html: svg }} 
+          dangerouslySetInnerHTML={{ __html: svg }}
         />
       )}
     </div>

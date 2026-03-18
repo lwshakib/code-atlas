@@ -1,8 +1,8 @@
 /**
  * STRUCTURED OBJECT GENERATION
- * 
- * This file provides a utility to force the LLM to return valid JSON 
- * that adheres to a specific Zod schema. It includes aggressive sanitization 
+ *
+ * This file provides a utility to force the LLM to return valid JSON
+ * that adheres to a specific Zod schema. It includes aggressive sanitization
  * and automatic retry logic for brittle model outputs.
  */
 
@@ -12,17 +12,17 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 /**
  * SANITIZE JSON
- * 
- * LLMs often wrap JSON in markdown blocks (```json ... ```) or add 
+ *
+ * LLMs often wrap JSON in markdown blocks (```json ... ```) or add
  * conversational prefix/suffix text. This function extracts just the { ... } part.
  */
 function sanitizeJSON(content: string): string {
   const clean = content.trim();
-  
+
   // 1. Identify the outermost JSON boundaries
   const firstBrace = clean.indexOf("{");
   const lastBrace = clean.lastIndexOf("}");
-  
+
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     // Check for explicit JSON markdown blocks
     const jsonMatch = clean.match(/```json\n?([\s\S]*?)\n?```/i);
@@ -47,15 +47,15 @@ function sanitizeJSON(content: string): string {
 
 /**
  * GENERATE OBJECT FROM GLM
- * 
+ *
  * High-reliability wrapper for structured LLM interaction.
- * 
+ *
  * @param messages - The conversation context
  * @param outputSchema - The Zod schema the AI must satisfy
  */
 export async function generateObjectFromGLM<T>({
   messages,
-  outputSchema
+  outputSchema,
 }: {
   messages: { role: string; content: string }[];
   outputSchema: z.ZodSchema<T>;
@@ -74,12 +74,12 @@ export async function generateObjectFromGLM<T>({
   if (enhancedMessages.length > 0 && enhancedMessages[0].role === "system") {
     enhancedMessages[0] = {
       ...enhancedMessages[0],
-      content: enhancedMessages[0].content + schemaInstruction
+      content: enhancedMessages[0].content + schemaInstruction,
     };
   } else {
     enhancedMessages.unshift({
       role: "system",
-      content: "Complete the following request." + schemaInstruction
+      content: "Complete the following request." + schemaInstruction,
     });
   }
 
@@ -90,12 +90,12 @@ export async function generateObjectFromGLM<T>({
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       console.log(`[GLM generateObject] Initiating Attempt ${attempt}...`);
-      
+
       const response = await fetch(GLM_WORKER_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${CLOUDFLARE_API_KEY}`
+          Authorization: `Bearer ${CLOUDFLARE_API_KEY}`,
         },
         body: JSON.stringify({
           messages: enhancedMessages,
@@ -105,10 +105,10 @@ export async function generateObjectFromGLM<T>({
             json_schema: {
               name: "response_schema",
               strict: true,
-              schema: jsonSchema
-            }
-          }
-        })
+              schema: jsonSchema,
+            },
+          },
+        }),
       });
 
       if (!response.ok) {
@@ -132,25 +132,36 @@ export async function generateObjectFromGLM<T>({
         console.log(`[GLM generateObject] Attempt ${attempt} Succeeded.`);
         return validated;
       } catch (innerError: unknown) {
-        console.warn(`[GLM generateObject] Attempt ${attempt} failed validation.`);
+        console.warn(
+          `[GLM generateObject] Attempt ${attempt} failed validation.`,
+        );
         lastError = innerError;
         if (innerError instanceof z.ZodError) {
           // Log specific schema mismatches to help with prompt debugging
-          console.error("[GLM generateObject] Zod Issues:", JSON.stringify(innerError.issues, null, 2));
+          console.error(
+            "[GLM generateObject] Zod Issues:",
+            JSON.stringify(innerError.issues, null, 2),
+          );
         }
       }
     } catch (outerError: unknown) {
-      console.warn(`[GLM generateObject] Attempt ${attempt} failed request:`, (outerError as Error).message || outerError);
+      console.warn(
+        `[GLM generateObject] Attempt ${attempt} failed request:`,
+        (outerError as Error).message || outerError,
+      );
       lastError = outerError;
     }
 
     // Exponential backoff before retry (1s, 2s)
     if (attempt < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
     }
   }
 
-  console.error("[GLM generateObject] All 3 attempts failed. Throwing last error.");
-  throw lastError || new Error("Failed to generate valid object after 3 attempts");
+  console.error(
+    "[GLM generateObject] All 3 attempts failed. Throwing last error.",
+  );
+  throw (
+    lastError || new Error("Failed to generate valid object after 3 attempts")
+  );
 }
-

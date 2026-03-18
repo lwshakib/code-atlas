@@ -1,8 +1,8 @@
 /**
  * CODEBASE SPECIFIC ROUTE HANDLER
- * 
+ *
  * This file manages operations on a single codebase instance, identified by its unique ID.
- * It supports updating names (PATCH), deleting all associated data (DELETE), 
+ * It supports updating names (PATCH), deleting all associated data (DELETE),
  * clearing chat history (PUT), and fetching fully aggregated codebase data (GET).
  */
 
@@ -19,7 +19,7 @@ import { getPineconeIndex } from "@/lib/pinecone";
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Authentication check
   const session = await auth.api.getSession({
@@ -32,7 +32,7 @@ export async function PATCH(
 
   try {
     const { name } = await req.json(); // New name from request body
-    const { id } = await params;       // ID from URL params
+    const { id } = await params; // ID from URL params
 
     // Verify ownership before updating
     const codebase = await prisma.codebase.findUnique({
@@ -40,7 +40,10 @@ export async function PATCH(
     });
 
     if (!codebase || codebase.userId !== session.user.id) {
-      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Codebase not found or access denied" },
+        { status: 404 },
+      );
     }
 
     // Perform the update in Postgres (Prisma)
@@ -52,7 +55,10 @@ export async function PATCH(
     return NextResponse.json({ success: true, data: updatedCodebase });
   } catch (error: unknown) {
     console.error("API PATCH /api/codebases/[id] error:", error);
-    return NextResponse.json({ error: "Failed to rename codebase" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to rename codebase" },
+      { status: 500 },
+    );
   }
 }
 
@@ -62,7 +68,7 @@ export async function PATCH(
  */
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Authentication check
   const session = await auth.api.getSession({
@@ -82,7 +88,10 @@ export async function DELETE(
     });
 
     if (!codebase || codebase.userId !== session.user.id) {
-      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Codebase not found or access denied" },
+        { status: 404 },
+      );
     }
 
     /**
@@ -95,7 +104,7 @@ export async function DELETE(
     try {
       const pineconeIndex = getPineconeIndex();
       await pineconeIndex.deleteMany({
-        filter: { codebaseId: { $eq: id } } // Filter by the specific codebase ID
+        filter: { codebaseId: { $eq: id } }, // Filter by the specific codebase ID
       });
     } catch (pcError) {
       console.error("Failed to delete from Pinecone:", pcError);
@@ -106,15 +115,15 @@ export async function DELETE(
     try {
       const driver = getNeo4jDriver();
       const neoSession = driver.session();
-      await neoSession.executeWrite(tx => 
+      await neoSession.executeWrite((tx) =>
         tx.run(
           `
           MATCH (c:Codebase {id: $id})
           OPTIONAL MATCH (f:File {codebaseId: $id})
           DETACH DELETE c, f
           `,
-          { id }
-        )
+          { id },
+        ),
       );
       await neoSession.close();
     } catch (neoError) {
@@ -130,7 +139,10 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("API DELETE /api/codebases/[id] error:", error);
-    return NextResponse.json({ error: "Failed to delete codebase" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete codebase" },
+      { status: 500 },
+    );
   }
 }
 
@@ -140,7 +152,7 @@ export async function DELETE(
  */
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Authentication check
   const session = await auth.api.getSession({
@@ -160,7 +172,10 @@ export async function PUT(
     });
 
     if (!codebase || codebase.userId !== session.user.id) {
-      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Codebase not found or access denied" },
+        { status: 404 },
+      );
     }
 
     // Delete all messages associated with this specific codebase
@@ -171,7 +186,10 @@ export async function PUT(
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("API PUT /api/codebases/[id] error:", error);
-    return NextResponse.json({ error: "Failed to clear chat history" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to clear chat history" },
+      { status: 500 },
+    );
   }
 }
 
@@ -181,7 +199,7 @@ export async function PUT(
  */
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Authentication check
   const session = await auth.api.getSession({
@@ -199,61 +217,81 @@ export async function GET(
     const codebase = await prisma.codebase.findUnique({
       where: { id },
       include: {
-        docPages: {                    // Retrieve generated wiki pages
+        docPages: {
+          // Retrieve generated wiki pages
           orderBy: { order: "asc" },
           include: {
-            children: {                // Include nested sub-sections
-              orderBy: { order: "asc" }
-            }
-          }
+            children: {
+              // Include nested sub-sections
+              orderBy: { order: "asc" },
+            },
+          },
         },
-        recommendations: true,         // Retrieve AI-suggested starting questions
-        messages: {                    // Retrieve previous chat messages
-          orderBy: { createdAt: "asc" }
-        }
-      }
+        recommendations: true, // Retrieve AI-suggested starting questions
+        messages: {
+          // Retrieve previous chat messages
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     // Validations
     if (!codebase || codebase.userId !== session.user.id) {
-      return NextResponse.json({ error: "Codebase not found or access denied" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Codebase not found or access denied" },
+        { status: 404 },
+      );
     }
 
     // PERSISTENCE FORMATTING:
-    // Postgres stores message parts as raw JSON. We map them back to the specific 
+    // Postgres stores message parts as raw JSON. We map them back to the specific
     // structured format expected by our frontend components (with tool citations).
-    const formattedMessages = codebase.messages.map(m => {
-      const parts = m.parts as { type: string; text?: string; id?: string; tool?: string; result?: unknown }[];
+    const formattedMessages = codebase.messages.map((m) => {
+      const parts = m.parts as {
+        type: string;
+        text?: string;
+        id?: string;
+        tool?: string;
+        result?: unknown;
+      }[];
       return {
         id: m.id,
         role: m.role,
         // Extract the main text part
-        content: Array.isArray(parts) ? parts.find(p => p.type === 'text')?.text || '' : '',
+        content: Array.isArray(parts)
+          ? parts.find((p) => p.type === "text")?.text || ""
+          : "",
         // Extract and format tool invocations for visualization in the chat UI
-        toolInvocations: Array.isArray(parts) ? parts.filter(p => p.type === 'tool').map(p => ({
-          id: p.id,
-          tool: p.tool,
-          status: 'success', // Historically loaded tool calls are marked as success
-          result: p.result
-        })) : []
+        toolInvocations: Array.isArray(parts)
+          ? parts
+              .filter((p) => p.type === "tool")
+              .map((p) => ({
+                id: p.id,
+                tool: p.tool,
+                status: "success", // Historically loaded tool calls are marked as success
+                result: p.result,
+              }))
+          : [],
       };
     });
 
     // UI Optimization: Filter to only return top-level wiki pages initially.
     // Nested children are already attached to these objects.
-    const topLevelPages = codebase.docPages.filter(p => !p.parentId);
+    const topLevelPages = codebase.docPages.filter((p) => !p.parentId);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       data: {
         ...codebase,
         docPages: topLevelPages,
-        messages: formattedMessages
-      } 
+        messages: formattedMessages,
+      },
     });
   } catch (error: unknown) {
     console.error("API GET /api/codebases/[id] error:", error);
-    return NextResponse.json({ error: "Failed to fetch codebase" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch codebase" },
+      { status: 500 },
+    );
   }
 }
-

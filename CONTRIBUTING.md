@@ -5,17 +5,20 @@ First off, thank you for considering contributing to Code Atlas! It's people lik
 ## 🌈 How Can I Contribute?
 
 ### Reporting Bugs
+
 - Before creating a new issue, please search existing issues to see if it has already been reported.
 - Use a clear and descriptive title.
 - Describe the exact steps which reproduce the problem in as many details as possible.
 - Explain which behavior you expected to see and why.
 
 ### Suggesting Enhancements
+
 - Check the current [README](README.md) to understand the project's goals.
 - Use a clear and descriptive title for the issue.
 - Provide a step-by-step description of the suggested enhancement.
 
 ### Pull Requests
+
 - Fill in the pull request template.
 - Do not include issue numbers in the PR title.
 - Include screenshots and animated GIFs in your pull request whenever possible.
@@ -28,6 +31,7 @@ First off, thank you for considering contributing to Code Atlas! It's people lik
 Code Atlas relies on a specific set of databases and background workers. Follow these steps to get a functional environment:
 
 ### 0. Clone the Repository
+
 ```bash
 git clone https://github.com/lwshakib/code-atlas.git
 cd code-atlas
@@ -37,27 +41,35 @@ cd code-atlas
 
 You MUST have a valid `.env` file. See `.env.example` for the required keys.
 Specifically, ensure you have:
+
 - `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
 - `PINECONE_API_KEY`, `PINECONE_INDEX`
 - `DATABASE_URL` (PostgreSQL)
 - `INNGEST_SIGNING_KEY` (for production/preview) or run `npx inngest-cli@latest dev` locally.
 
 ### 2. Databases via Docker
+
 The easiest way to run the required infra is via the provided `docker-compose.yml`:
+
 ```bash
 docker-compose up -d
 ```
+
 This starts:
+
 - **PostgreSQL**: For core application data.
 - **Neo4j**: For graph-native code mapping.
 
 ### 3. Inngest Dev Server
+
 Code Atlas uses Inngest for background indexing. You must run the Inngest Dev Server locally to capture and execute functions:
+
 ```bash
 npx inngest-cli@latest dev
 ```
 
 ### 4. Running the App
+
 ```bash
 bun dev
 ```

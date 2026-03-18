@@ -1,6 +1,6 @@
 /**
  * PRISMA DATABASE CLIENT
- * 
+ *
  * This file initializes the Prisma client used for interacting with PostgreSQL.
  * It uses the 'prisma-adapter-pg' to handle connections via a standard connection string.
  */
@@ -23,4 +23,3 @@ const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 export default prisma;
-

@@ -1,7 +1,7 @@
 /**
  * CLIENT-SIDE AUTHENTICATION UTILITIES
- * 
- * Provides the authClient used for managing sessions, sign-ups, and log-outs 
+ *
+ * Provides the authClient used for managing sessions, sign-ups, and log-outs
  * within React components. Integrated with the server-side Better Auth setup.
  */
 
@@ -14,4 +14,3 @@ export const authClient = createAuthClient({
    */
   baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
 });
-

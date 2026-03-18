@@ -1,12 +1,12 @@
 /**
  * LLM SYSTEM PROMPTS
- * 
+ *
  * Defines the core "personalities" and operating constraints for our AI agents.
  */
 
 /**
  * REPOSITORY DOCUMENTATION SYSTEM PROMPT
- * 
+ *
  * Used by Inngest background functions to generate the initial codebase wiki.
  * It instructs the model to act as a 'Lead Architect' and output structural JSON.
  */
@@ -19,11 +19,13 @@ FORMATTING RULES:
 
 /**
  * CHAT ASSISTANT SYSTEM PROMPT
- * 
+ *
  * Used by the chat API to guide interactive troubleshooting.
  * Focuses on research speed, precision, and multi-database tool usage (Neo4j/Pinecone).
  */
-export const CHAT_ASSISTANT_SYSTEM_PROMPT = (codebaseName: string) => `You are an expert Software Architect AI assistant for the codebase: "${codebaseName}".
+export const CHAT_ASSISTANT_SYSTEM_PROMPT = (
+  codebaseName: string,
+) => `You are an expert Software Architect AI assistant for the codebase: "${codebaseName}".
       
 CORE OPERATING PRINCIPLES:
 1. DECISIVENESS: Your goal is to provide a comprehensive answer as quickly as possible. If the first file you read or search results provide the answer, STOP searching and respond immediately.
@@ -38,4 +40,3 @@ RESPONSE FORMAT:
 - Use clean Markdown and bold text for key patterns.
 
 Current Date: ${new Date().toLocaleDateString()}`;
-

@@ -7,11 +7,7 @@ export type ImageProps = Experimental_GeneratedImage & {
   alt?: string;
 };
 
-export const Image = ({
-  base64,
-  mediaType,
-  ...props
-}: ImageProps) => (
+export const Image = ({ base64, mediaType, ...props }: ImageProps) => (
   <NextImage
     {...props}
     alt={props.alt || "AI generated image"}
