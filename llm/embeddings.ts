@@ -195,7 +195,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
  * Factory function to get an embeddings client.
  * BGE-M3 default dimensionality is 1024.
  */
-export const getEmbeddings = (taskType?: any, dimensionality?: number) =>
+export const getEmbeddings = () =>
   new CloudflareBgeM3Embeddings();
 
 /**

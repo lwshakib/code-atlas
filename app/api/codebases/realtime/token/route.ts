@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(token);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API POST /api/codebases/realtime/token error:", error);
     return NextResponse.json({ error: "Failed to generate subscription token" }, { status: 500 });
   }

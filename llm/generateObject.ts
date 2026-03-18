@@ -6,7 +6,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  * Sanitizes JSON content by stripping markdown fences and non-JSON noise.
  */
 function sanitizeJSON(content: string): string {
-  let clean = content.trim();
+  const clean = content.trim();
   
   // 1. Try to find the outermost braces {}
   const firstBrace = clean.indexOf("{");

@@ -25,7 +25,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data: codebases });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API GET /api/codebases error:", error);
     return NextResponse.json({ error: "Failed to fetch codebases" }, { status: 500 });
   }
@@ -65,8 +65,8 @@ export async function POST(req: Request) {
         repo,
       });
       repoInfo = response.data;
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err: unknown) {
+      if (err instanceof Error && (err as { status?: number }).status === 404) {
         return NextResponse.json({ 
           error: "Repository not found or private. Please check the URL and ensure your GitHub account has the necessary permissions." 
         }, { status: 404 });
@@ -113,8 +113,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, codebaseId: codebase.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API POST /api/codebases error:", error);
-    return NextResponse.json({ error: error.message || "Failed to start indexing" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to start indexing" }, { status: 500 });
   }
 }

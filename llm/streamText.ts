@@ -9,9 +9,17 @@ import { executeTool } from "@/lib/ai-tools";
  * @param signal - AbortSignal to cancel the request
  * @returns A ReadableStream that emits text chunks
  */
+export interface Message {
+  role: "system" | "user" | "assistant" | "tool";
+  content?: string;
+  tool_calls?: { id: string; type: string; function: { name: string; arguments: string } }[];
+  tool_call_id?: string;
+  name?: string;
+}
+
 export async function streamTextFromGLM(
-  messages: any[], 
-  options: { tools?: any[]; tool_choice?: string; codebaseId?: string } = {},
+  messages: Message[], 
+  options: { tools?: unknown[]; tool_choice?: string; codebaseId?: string } = {},
   signal?: AbortSignal
 ): Promise<ReadableStream> {
   const currentMessages = [...messages];
@@ -52,13 +60,13 @@ export async function streamTextFromGLM(
       }
 
       let currentReader = reader;
-      let toolCalls: any[] = [];
+      let toolCalls: { id: string; type: string; function: { name: string; arguments: string } }[] = [];
       let turnCount = 0;
       let lineBuffer = "";
       const MAX_TURNS = 6; // Hard limit for safety
 
       try {
-        const streamJson = (obj: any) => {
+        const streamJson = (obj: { type: string; [key: string]: unknown }) => {
           controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));
         };
 
@@ -69,7 +77,7 @@ export async function streamTextFromGLM(
             if (toolCalls.length > 0 && turnCount < MAX_TURNS) {
               turnCount++;
               
-              const assistantMessage = { role: "assistant", tool_calls: toolCalls };
+              const assistantMessage: Message = { role: "assistant", tool_calls: toolCalls };
               currentMessages.push(assistantMessage);
 
               // Execute tool calls in parallel for efficiency
@@ -156,8 +164,8 @@ export async function streamTextFromGLM(
                 } else if (delta?.content) {
                   streamJson({ type: "text", content: delta.content });
                 }
-              } catch (e) {
-                console.error("Error parsing GLM stream chunk:", e, dataStr);
+              } catch {
+                // Ignore parsing errors for individual lines
               }
             }
           }

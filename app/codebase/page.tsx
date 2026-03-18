@@ -2,14 +2,11 @@
 
 import React from 'react';
 import { 
-  Github, 
-  LogOut, 
-  User, 
-  Settings, 
-  LayoutDashboard,
-  Plus 
+  Github,
+  Plus,
+  LayoutDashboard
 } from 'lucide-react';
-import { LogoWithText, Logo } from '@/components/Logo';
+import { LogoWithText } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -22,21 +19,7 @@ import {
 } from "@/components/ui/table";
 import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
-import { 
-  Avatar, 
-  AvatarImage, 
-  AvatarFallback 
-} from '@/components/ui/avatar';
 import { UserMenu } from '@/components/UserMenu';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -44,12 +27,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
@@ -57,14 +35,10 @@ import {
   Download, 
   ArrowRight,
   Loader2,
-  BookOpen,
   AlertCircle,
-  History,
   RefreshCw,
   Lock,
   Search,
-  MoreVertical,
-  Pencil,
   Trash2
 } from 'lucide-react';
 import { fetchGithubRepositoriesAction } from "@/actions/github";
@@ -72,6 +46,15 @@ import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from "sonner";
 import { CodebaseRow } from '@/components/CodebaseRow';
+
+interface Codebase {
+  id: string;
+  name: string;
+  description?: string;
+  indexedAt?: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function CodebasePage() {
   const [scrolled, setScrolled] = React.useState(false);
@@ -86,20 +69,19 @@ export default function CodebasePage() {
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(true);
   const [repoError, setRepoError] = React.useState<string | null>(null);
-  const [userCodebases, setUserCodebases] = React.useState<any[]>([]);
+  const [userCodebases, setUserCodebases] = React.useState<Codebase[]>([]);
   const [isLoadingCodebases, setIsLoadingCodebases] = React.useState(true);
   
   // Rename/Delete states
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedCodebase, setSelectedCodebase] = React.useState<any>(null);
+  const [selectedCodebase, setSelectedCodebase] = React.useState<Codebase | null>(null);
   const [newName, setNewName] = React.useState("");
   const [isActionLoading, setIsActionLoading] = React.useState(false);
   
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   
   const { data: session } = authClient.useSession();
-  const router = useRouter();
 
   const fetchRepos = async () => {
     setIsLoadingRepos(true);
@@ -116,7 +98,7 @@ export default function CodebasePage() {
     setIsLoadingRepos(false);
   };
 
-  const fetchUserCodebases = async () => {
+  const fetchUserCodebases = React.useCallback(async () => {
     setIsLoadingCodebases(true);
     try {
       const response = await fetch('/api/codebases');
@@ -129,7 +111,36 @@ export default function CodebasePage() {
     } finally {
       setIsLoadingCodebases(false);
     }
-  };
+  }, []);
+
+  const handleIndex = React.useCallback(async (repoFullName: string) => {
+    setIsIndexing(true);
+    toast.loading("Starting codebase indexing...", { id: "indexing" });
+    
+    try {
+      const response = await fetch('/api/codebases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ repoFullName }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success("Codebase indexing started!", { id: "indexing" });
+        setIsNewCodebaseOpen(false);
+        fetchUserCodebases();
+      } else {
+        toast.error(result.error || "Failed to index codebase", { id: "indexing" });
+      }
+    } catch {
+      toast.error("An unexpected error occurred", { id: "indexing" });
+    } finally {
+      setIsIndexing(false);
+    }
+  }, [fetchUserCodebases]);
 
   const removeCodebase = (id: string) => {
     setUserCodebases(prev => prev.filter(cb => cb.id !== id));
@@ -151,7 +162,7 @@ export default function CodebasePage() {
         });
       }
     }
-  }, [session]);
+  }, [session, handleIndex, fetchUserCodebases]);
 
   const loadMore = async () => {
     if (isFetchingMore || !hasMore || searchQuery) return;
@@ -183,7 +194,7 @@ export default function CodebasePage() {
     if (dialogView === 'import' && session && repositories.length === 0) {
       fetchRepos();
     }
-  }, [dialogView, session]);
+  }, [dialogView, session, repositories.length]);
 
   const handleSignIn = async () => {
     await authClient.signIn.social({
@@ -194,34 +205,7 @@ export default function CodebasePage() {
 
 
 
-  const handleIndex = async (repoFullName: string) => {
-    setIsIndexing(true);
-    toast.loading("Starting codebase indexing...", { id: "indexing" });
-    
-    try {
-      const response = await fetch('/api/codebases', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ repoFullName }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success("Codebase indexing started!", { id: "indexing" });
-        setIsNewCodebaseOpen(false);
-        fetchUserCodebases();
-      } else {
-        toast.error(result.error || "Failed to index codebase", { id: "indexing" });
-      }
-    } catch (error) {
-      toast.error("An unexpected error occurred", { id: "indexing" });
-    } finally {
-      setIsIndexing(false);
-    }
-  };
+
 
   const handleUrlSubmit = () => {
     if (!repoUrl) return;
@@ -246,7 +230,6 @@ export default function CodebasePage() {
     
     // Save original state for possible rollbacks
     const originalCodebases = [...userCodebases];
-    const originalName = selectedCodebase.name;
 
     // Optimistically update the UI
     setUserCodebases(prev => prev.map(cb => 
@@ -272,7 +255,7 @@ export default function CodebasePage() {
         setUserCodebases(originalCodebases);
         toast.error(result.error || "Failed to rename codebase");
       }
-    } catch (error) {
+    } catch {
       // Rollback on error
       setUserCodebases(originalCodebases);
       toast.error("An unexpected error occurred");
@@ -296,7 +279,7 @@ export default function CodebasePage() {
       } else {
         toast.error(result.error || "Failed to delete codebase");
       }
-    } catch (error) {
+    } catch {
       toast.error("An unexpected error occurred");
     } finally {
       setIsActionLoading(false);
@@ -320,9 +303,9 @@ export default function CodebasePage() {
         <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex items-center w-1/3">
-            <a href="/">
+            <Link href="/">
               <LogoWithText size={28} />
-            </a>
+            </Link>
           </div>
 
           {/* Right: Actions */}
@@ -706,7 +689,7 @@ export default function CodebasePage() {
             <DialogHeader className="mb-6 text-left">
               <DialogTitle className="text-xl font-bold tracking-tight">Delete Codebase</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-foreground">"{selectedCodebase?.name}"</span>? This action cannot be undone and all associated data will be removed.
+                Are you sure you want to delete <span className="font-bold text-foreground">&quot;{selectedCodebase?.name}&quot;</span>? This action cannot be undone and all associated data will be removed.
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-3 mt-8">

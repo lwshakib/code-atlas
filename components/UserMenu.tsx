@@ -4,8 +4,6 @@ import React from 'react';
 import { 
   LogOut, 
   User, 
-  Settings, 
-  LayoutDashboard,
   Bell,
   CreditCard,
   Code2

@@ -7,7 +7,7 @@ export type ToolInvocation = {
   id: string;
   tool: string;
   status: "calling" | "success" | "error";
-  result?: any;
+  result?: unknown;
 };
 
 export type Message = {
@@ -119,13 +119,13 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
                 return updated;
               });
             }
-          } catch (e) {
+          } catch {
             // If it's not JSON, it might be raw text 
           }
         }
       }
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") {
         console.log("[useChat] Request aborted");
       } else {
         console.error("[useChat] Error:", error);

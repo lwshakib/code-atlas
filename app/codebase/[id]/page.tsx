@@ -2,33 +2,12 @@
 
 import React from 'react';
 import { 
-  Github, 
-  LogOut, 
-  User, 
-  Settings, 
-  LayoutDashboard,
-  Search,
   FileCode,
-  FolderOpen,
-  ChevronRight,
-  Info,
-  Calendar,
-  Code2,
-  GitBranch,
-  Star,
-  Eye,
-  Activity,
-  ArrowLeft,
-  Share2,
-  ExternalLink,
-  MoreHorizontal,
-  Zap,
   MessageSquare,
   Send,
   X,
   Sparkles,
   ArrowUpRight,
-  Plus,
   Trash2,
   Copy,
   Check
@@ -37,6 +16,7 @@ import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
+import type { BundledLanguage } from 'shiki';
 import { Mermaid } from "@/components/ai-elements/mermaid-diagram";
 import { 
   CodeBlock, 
@@ -44,33 +24,12 @@ import {
   CodeBlockTitle,
   CodeBlockActions, 
   CodeBlockCopyButton,
-  CodeBlockContainer
 } from "@/components/ai-elements/code-block";
-import { Shimmer } from "@/components/ai-elements/shimmer";
+
 import { LogoWithText } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
-import { 
-  Avatar, 
-  AvatarImage, 
-  AvatarFallback 
-} from '@/components/ui/avatar';
+
 import { UserMenu } from '@/components/UserMenu';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { InputGroup } from '@/components/ui/input-group';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -82,8 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { authClient } from '@/lib/auth-client';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -101,22 +59,53 @@ import {
   ToolCallStatus
 } from '@/components/ai-elements/message';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+
+interface CodebaseDocPageChild {
+  id: string;
+  title: string;
+  content: string;
+}
+
+interface CodebaseDocPage {
+  id: string;
+  title: string;
+  content: string;
+  children?: CodebaseDocPageChild[];
+}
+
+interface CodebaseData {
+  id: string;
+  docPages: CodebaseDocPage[];
+  recommendations?: { text: string }[];
+  messages?: unknown[]; // Changed from any to unknown
+}
 
 const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
   const [scrolled, setScrolled] = React.useState(false);
-  const { data: session } = authClient.useSession();
-  const router = useRouter();
   const params = useParams();
   const codebaseId = params.id as string;
   const [activePageId, setActivePageId] = React.useState<string | null>(null);
   const [showChat, setShowChat] = React.useState(true);
-  
-  const [codebase, setCodebase] = React.useState<any>(null);
+  const [codebase, setCodebase] = React.useState<CodebaseData | null>(null);
   const [shuffledQuestions, setShuffledQuestions] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+
+  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
+
+  const {
+    messages,
+    input,
+    setInput,
+    append,
+    isLoading: isChatLoading,
+    handleSubmit: handleChatSubmit,
+    setMessages,
+    stop,
+  } = useChat({
+    api: `/api/chat/${codebaseId}`,
+    initialMessages: [],
+  });
 
   // Fetch codebase data
   React.useEffect(() => {
@@ -135,28 +124,24 @@ export default function CodebaseDetailsPage() {
         }
       } catch (error) {
         console.error("Failed to fetch codebase:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     if (codebaseId) {
       fetchCodebase();
     }
-  }, [codebaseId]);
+  }, [codebaseId, setMessages]);
 
   // Shuffle questions when chat opens
   React.useEffect(() => {
-    if (showChat && codebase?.recommendations?.length > 0) {
-      const allQuestions = codebase.recommendations.map((r: any) => r.text);
+    if (showChat && (codebase?.recommendations?.length ?? 0) > 0) {
+      const allQuestions = codebase!.recommendations!.map((r) => r.text);
       const shuffled = [...allQuestions]
         .sort(() => 0.5 - Math.random())
         .slice(0, 3);
       setShuffledQuestions(shuffled);
     }
   }, [showChat, codebase]);
-
-  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
 
   const toggleItem = (label: string) => {
     setExpandedItems(prev => 
@@ -165,6 +150,7 @@ export default function CodebaseDetailsPage() {
   };
 
   const chatStreamdownComponents = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     code: ({ inline, className, children }: any) => {
       const match = /language-(\w+)/.exec(className || "");
       const language = match ? match[1] : null;
@@ -185,7 +171,7 @@ export default function CodebaseDetailsPage() {
       return (
         <CodeBlock 
           code={codeText} 
-          language={language as any}
+          language={(language || "text") as BundledLanguage}
           className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
         >
           <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
@@ -230,20 +216,6 @@ export default function CodebaseDetailsPage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const { 
-    messages, 
-    input, 
-    setInput, 
-    append, 
-    isLoading: isChatLoading, 
-    handleSubmit: handleChatSubmit,
-    setMessages,
-    stop 
-  } = useChat({
-    api: `/api/chat/${codebaseId}`,
-    initialMessages: [],
-  });
 
   const handleClearChat = async () => {
     try {
@@ -304,9 +276,9 @@ export default function CodebaseDetailsPage() {
       }`}>
         <div className="max-w-full mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <a href="/">
+            <Link href="/">
               <LogoWithText size={28} />
-            </a>
+            </Link>
           </div>
 
 
@@ -338,7 +310,7 @@ export default function CodebaseDetailsPage() {
             >
               <h3 className="text-sm font-semibold text-foreground mb-6">On this page</h3>
               <div className="relative border-l-2 border-primary/40 pl-6 space-y-5">
-                {codebase?.docPages.map((section: any, idx: number) => {
+                {codebase?.docPages.map((section: CodebaseDocPage, idx: number) => {
                   const isExpanded = expandedItems.includes(section.title);
                   const isActive = activePageId === section.id;
                   return (
@@ -346,14 +318,14 @@ export default function CodebaseDetailsPage() {
                       <button 
                         onClick={() => {
                           scrollToSection(section.id, true);
-                          if (section.children?.length > 0) toggleItem(section.title);
+                          if ((section.children?.length ?? 0) > 0) toggleItem(section.title);
                         }}
                         className={`block text-left text-[13px] font-bold transition-all duration-300 leading-tight hover:text-primary ${isActive ? 'text-primary' : 'text-foreground/60'}`}
                       >
                         {section.title}
                       </button>
                       <AnimatePresence initial={false}>
-                        {section.children?.length > 0 && isExpanded && (
+                        {(section.children?.length ?? 0) > 0 && isExpanded && (
                           <motion.div 
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -362,7 +334,7 @@ export default function CodebaseDetailsPage() {
                             className="overflow-hidden"
                           >
                             <div className="pl-8 flex flex-col gap-4 pt-4 pb-2">
-                              {section.children.map((child: any, cIdx: number) => (
+                              {section.children?.map((child: CodebaseDocPageChild, cIdx: number) => (
                                 <button 
                                   key={cIdx} 
                                   onClick={() => scrollToSection(child.id, false)}
@@ -394,8 +366,8 @@ export default function CodebaseDetailsPage() {
               className="bg-background/20 rounded-[2.5rem] border border-border/30 p-12 lg:p-16 h-full shadow-2xl shadow-primary/5 space-y-24 scroll-smooth"
             >
               {codebase?.docPages
-                .filter((page: any) => page.id === activePageId)
-                .map((section: any, sIdx: number) => (
+                .filter((page: CodebaseDocPage) => page.id === activePageId)
+                .map((section: CodebaseDocPage, sIdx: number) => (
                 <article key={sIdx} id={section.id} className="max-w-none prose prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-p:text-muted-foreground prose-p:leading-relaxed prose-strong:text-foreground">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -411,6 +383,7 @@ export default function CodebaseDetailsPage() {
                         <Streamdown 
                           plugins={streamdownPlugins}
                           components={{
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             code: ({ inline, className, children }: any) => {
                               const match = /language-(\w+)/.exec(className || "");
                               const language = match ? match[1] : null;
@@ -431,7 +404,7 @@ export default function CodebaseDetailsPage() {
                               return (
                                 <CodeBlock 
                                   code={codeText} 
-                                  language={language as any}
+                                  language={(language || "text") as BundledLanguage}
                                   className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
                                 >
                                   <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
@@ -452,9 +425,9 @@ export default function CodebaseDetailsPage() {
                         </Streamdown>
                       </div>
 
-                      {section.children?.length > 0 && (
+                      {(section.children?.length ?? 0) > 0 && (
                         <div className="space-y-20 mt-20">
-                          {section.children.map((sub: any, subIdx: number) => (
+                          {section.children?.map((sub: CodebaseDocPageChild, subIdx: number) => (
                             <div key={subIdx} id={sub.id} className="scroll-mt-32">
                               <h2 className="text-2xl font-bold tracking-tight text-foreground mb-6 border-b border-border/10 pb-4">
                                 {sub.title}
@@ -463,6 +436,7 @@ export default function CodebaseDetailsPage() {
                                 <Streamdown 
                                   plugins={streamdownPlugins}
                                   components={{
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     code: ({ inline, className, children }: any) => {
                                       const match = /language-(\w+)/.exec(className || "");
                                       const language = match ? match[1] : null;
@@ -483,7 +457,7 @@ export default function CodebaseDetailsPage() {
                                       return (
                                         <CodeBlock 
                                           code={codeText} 
-                                          language={language as any}
+                                          language={(language || "text") as BundledLanguage}
                                           className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
                                         >
                                           <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
@@ -614,7 +588,7 @@ export default function CodebaseDetailsPage() {
                       onSubmit={async (e) => {
                         e.preventDefault();
                         if (!input.trim() || isChatLoading) return;
-                        await handleChatSubmit(e as any);
+                        await handleChatSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
                       }}
                       className="relative"
                     >

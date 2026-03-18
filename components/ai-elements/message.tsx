@@ -23,6 +23,7 @@ import {
 import { FileCode } from "lucide-react";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon, Loader2 } from "lucide-react";
+import type { BundledLanguage } from "shiki";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import {
   createContext,
@@ -337,7 +338,9 @@ export const MessageResponse = memo(
       )}
       plugins={streamdownPlugins}
       components={{
-        code: ({ inline, className, children }: any) => {
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+        code: (props: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
+          const { inline, className, children } = props;
           const match = /language-(\w+)/.exec(className || "");
           const language = match ? match[1] : null;
           const codeText = String(children).replace(/\n$/, "");
@@ -357,7 +360,7 @@ export const MessageResponse = memo(
           return (
             <CodeBlock 
               code={codeText} 
-              language={language as any}
+              language={(language || "text") as BundledLanguage}
               className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
             >
               <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
@@ -372,7 +375,7 @@ export const MessageResponse = memo(
             </CodeBlock>
           );
         }
-      }}
+      } as MessageResponseProps["components"]}
       {...props}
     />
   ),
@@ -384,7 +387,7 @@ export const MessageResponse = memo(
 MessageResponse.displayName = "MessageResponse";
 
 export type ToolCallStatusProps = {
-  toolInvocations?: any[];
+  toolInvocations?: { tool: string; status: string; [key: string]: unknown }[];
 };
 
 export const ToolCallStatus = ({ toolInvocations }: ToolCallStatusProps) => {

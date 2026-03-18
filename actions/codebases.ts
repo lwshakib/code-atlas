@@ -68,9 +68,10 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error("cancelAndCleanupIndexingAction error:", error);
-    return { success: false, error: error.message || "Failed to cancel indexing" };
+  } catch (error) {
+    const err = error as Error;
+    console.error("cancelAndCleanupIndexingAction error:", err);
+    return { success: false, error: err.message || "Failed to cancel indexing" };
   }
 }
 
@@ -127,9 +128,10 @@ export async function retryIndexingAction(codebaseId: string) {
       });
   
       return { success: true };
-    } catch (error: any) {
-      console.error("retryIndexingAction error:", error);
-      return { success: false, error: error.message || "Failed to retry indexing" };
+    } catch (error) {
+      const err = error as Error;
+      console.error("retryIndexingAction error:", err);
+      return { success: false, error: err.message || "Failed to retry indexing" };
     }
   }
 

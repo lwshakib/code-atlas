@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";
+import Image from "next/image";
 
 // ============================================================================
 // Types
@@ -91,20 +92,22 @@ const renderAttachmentImage = (
   isGrid: boolean,
 ) =>
   isGrid ? (
-    <img
+    <Image
       alt={filename || "Image"}
       className="size-full object-cover"
       height={96}
       src={url}
       width={96}
+      unoptimized
     />
   ) : (
-    <img
+    <Image
       alt={filename || "Image"}
       className="size-full rounded object-cover"
       height={20}
       src={url}
       width={20}
+      unoptimized
     />
   );
 

@@ -1,7 +1,7 @@
 import { getPineconeIndex } from "./pinecone";
 import { getNeo4jDriver } from "./neo4j";
 import { generateEmbeddings } from "@/llm/embeddings";
-import prisma from "./prisma";
+
 
 export const aiTools = [
   {
@@ -61,9 +61,9 @@ export const aiTools = [
   }
 ];
 
-export async function executeTool(name: string, args: any, codebaseId: string, signal?: AbortSignal) {
+export async function executeTool(name: string, args: Record<string, unknown>, codebaseId: string, signal?: AbortSignal) {
   if (name === "search_codebase") {
-    const { query } = args;
+    const query = args.query as string;
     console.log(`[Tool: search_codebase] Query: "${query}" | Codebase: ${codebaseId}`);
     const embedding = await generateEmbeddings(query, signal);
     
@@ -84,7 +84,7 @@ export async function executeTool(name: string, args: any, codebaseId: string, s
   }
 
   if (name === "get_file_content") {
-    const { path } = args;
+    const path = args.path as string;
     console.log(`[Tool: get_file_content] Path: "${path}" | Codebase: ${codebaseId}`);
     
     signal?.throwIfAborted();
@@ -106,9 +106,9 @@ export async function executeTool(name: string, args: any, codebaseId: string, s
       }
       
       return { error: "File not found in the indexed database." };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Error fetching file from Neo4j ${path}:`, err);
-      return { error: `Failed to fetch file content from database: ${err.message}` };
+      return { error: `Failed to fetch file content from database: ${(err as Error).message || String(err)}` };
     } finally {
       await session.close();
     }
@@ -129,7 +129,7 @@ export async function executeTool(name: string, args: any, codebaseId: string, s
           WHERE f.path STARTS WITH $prefix
           RETURN f.path as path LIMIT 200
           `, 
-          { codebaseId, prefix: directory ? (directory.endsWith('/') ? directory : directory + '/') : "" }
+          { codebaseId, prefix: directory ? ((directory as string).endsWith('/') ? directory : directory + '/') : "" }
         )
       );
       
@@ -141,7 +141,7 @@ export async function executeTool(name: string, args: any, codebaseId: string, s
   }
 
   if (name === "query_graph_relations") {
-    const { cypher } = args;
+    const cypher = args.cypher as string;
     console.log(`[Tool: query_graph_relations] Cypher: "${cypher}" | Codebase: ${codebaseId}`);
     
     signal?.throwIfAborted();

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { CHAT_ASSISTANT_SYSTEM_PROMPT } from "@/llm/prompts";
@@ -67,8 +68,15 @@ export async function POST(
     (async () => {
       const reader = streamToCollect.getReader();
       const decoder = new TextDecoder();
+      interface ToolCapture {
+        type: "tool";
+        id: string;
+        tool: string;
+        result: unknown;
+      }
+
       let fullContent = "";
-      let toolCaptures: any[] = [];
+      const toolCaptures: ToolCapture[] = [];
       let lastSavedLength = 0;
       let lastSavedToolCount = 0;
 
@@ -82,8 +90,8 @@ export async function POST(
                 parts: [
                   { type: "text", text: fullContent },
                   ...toolCaptures
-                ],
-                codebaseId,
+                ] as Prisma.InputJsonValue, // parts is a Json field
+                codebaseId: (await params).id,
               },
             });
             lastSavedLength = fullContent.length;
@@ -114,16 +122,17 @@ export async function POST(
                   result: data.result
                 });
               }
-            } catch (e) {
+            } catch {
               // Not JSON chunk
             }
           }
         }
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
+      } catch (err) {
+        const error = err as Error;
+        if (error.name === 'AbortError') {
           console.log("[POST] Stream collection aborted by client");
         } else {
-          console.error("[COLLECT_STREAM_ERROR]", err);
+          console.error("[COLLECT_STREAM_ERROR]", error);
         }
       } finally {
         // Final save for partial or full content
@@ -137,7 +146,7 @@ export async function POST(
         "Content-Type": "text/plain; charset=utf-8",
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("API POST /api/chat/[id] error:", error);
     return NextResponse.json({ error: "Chat failed" }, { status: 500 });
   }

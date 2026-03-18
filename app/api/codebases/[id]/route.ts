@@ -37,7 +37,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true, data: updatedCodebase });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API PATCH /api/codebases/[id] error:", error);
     return NextResponse.json({ error: "Failed to rename codebase" }, { status: 500 });
   }
@@ -104,7 +104,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API DELETE /api/codebases/[id] error:", error);
     return NextResponse.json({ error: "Failed to delete codebase" }, { status: 500 });
   }
@@ -140,7 +140,7 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API PUT /api/codebases/[id] error:", error);
     return NextResponse.json({ error: "Failed to clear chat history" }, { status: 500 });
   }
@@ -185,7 +185,7 @@ export async function GET(
 
     // Map messages back to frontend format
     const formattedMessages = codebase.messages.map(m => {
-      const parts = m.parts as any;
+      const parts = m.parts as { type: string; text?: string; id?: string; tool?: string; result?: unknown }[];
       return {
         id: m.id,
         role: m.role,
@@ -210,7 +210,7 @@ export async function GET(
         messages: formattedMessages
       } 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API GET /api/codebases/[id] error:", error);
     return NextResponse.json({ error: "Failed to fetch codebase" }, { status: 500 });
   }

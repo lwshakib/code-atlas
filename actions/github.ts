@@ -4,7 +4,6 @@ import { Octokit } from "octokit";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
-import { formatDistanceToNow } from 'date-fns';
 
 /**
  * Interface for repository data.
@@ -64,7 +63,7 @@ export async function getUserRepositories(page: number = 1): Promise<GithubRepo[
       visibility: "all",
     });
 
-    return response.data.map((repo: any) => ({
+    return response.data.map((repo: GithubRepo) => ({
       id: repo.id,
       name: repo.name,
       full_name: repo.full_name,
@@ -88,8 +87,9 @@ export async function fetchGithubRepositoriesAction(page: number = 1): Promise<{
   try {
     const repos = await getUserRepositories(page);
     return { success: true, data: repos };
-  } catch (error: any) {
-    console.error("fetchGithubRepositoriesAction error:", error);
-    return { success: false, error: error.message || "Failed to fetch repositories" };
+  } catch (error) {
+    const err = error as Error;
+    console.error("fetchGithubRepositoriesAction error:", err);
+    return { success: false, error: err.message || "Failed to fetch repositories" };
   }
 }

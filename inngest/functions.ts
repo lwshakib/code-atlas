@@ -1,10 +1,11 @@
+import { PineconeRecord, RecordMetadata } from "@pinecone-database/pinecone";
 import { inngest } from "./client";
 import { Octokit } from "octokit";
 import prisma from "@/lib/prisma";
 import { getNeo4jDriver } from "@/lib/neo4j";
 import { getPineconeIndex } from "@/lib/pinecone";
 import { INDEXING_BATCH_SIZE, MAX_EMBEDDING_TEXT_LENGTH } from "@/lib/constants";
-import { generateEmbeddings, generateBatchEmbeddings } from "@/llm/embeddings";
+import { generateBatchEmbeddings } from "@/llm/embeddings";
 import { codebaseChannel } from "./channels";
 import { generateObjectFromGLM } from "@/llm/generateObject";
 import { z } from "zod";
@@ -25,10 +26,10 @@ export const indexCodebase = inngest.createFunction(
     ]
   },
   { event: "codebase/index.start" },
-  // @ts-ignore
+  // @ts-expect-error - inngest function event type mismatch in current SDK version
   async ({ event, step, publish }) => {
 
-    const { repoFullName, codebaseId, accessToken, userId } = event.data;
+    const { repoFullName, codebaseId, accessToken } = event.data;
 
     try {
       const [owner, repo] = repoFullName.split("/");
@@ -53,8 +54,8 @@ export const indexCodebase = inngest.createFunction(
           recursive: "true",
         });
         return data.tree.filter(
-          (item) => item.type === "blob" && isRelevantFile(item.path || "")
-        );
+          (item) => item.type === "blob" && item.path && isRelevantFile(item.path)
+        ) as { path: string; sha: string; [key: string]: unknown }[];
       });
 
       // 2. Process Files in Batches (using configured INDEXING_BATCH_SIZE)
@@ -91,7 +92,7 @@ export const indexCodebase = inngest.createFunction(
           // B. Generate Embeddings in BATCH (Significant cost/performance improvement)
           const embeddings = await generateBatchEmbeddings(validFiles.map(f => f.text));
 
-          const pineconeRecords: any[] = [];
+          const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
           const session = driver.session();
 
           try {
@@ -103,7 +104,7 @@ export const indexCodebase = inngest.createFunction(
                 id: `${codebaseId}:${file.path}`,
                 values: embedding,
                 metadata: {
-                  codebaseId,
+                  codebaseId: String(codebaseId),
                   path: file.path,
                   contentSnippet: content.substring(0, 200),
                 },
@@ -251,7 +252,7 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
       });
 
       return { success: true, processedCount: treeData.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Index codebase error for ${codebaseId}:`, error);
       await step.run("handle-failure", async () => {
         await prisma.codebase.update({
@@ -260,7 +261,7 @@ Think step-by-step about the architecture, tech stack, and data flow before gene
         });
         await publish(codebaseChannel(codebaseId).status({ 
           status: "FAILED",
-          message: error.message || "An unknown error occurred"
+          message: (error as Error).message || "An unknown error occurred"
         }));
       });
       throw error;

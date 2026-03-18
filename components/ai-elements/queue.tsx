@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
 import type { ComponentProps } from "react";
+import Image from "next/image";
 
 export interface QueueMessagePart {
   type: string;
@@ -151,12 +152,14 @@ export const QueueItemImage = ({
   className,
   ...props
 }: QueueItemImageProps) => (
-  <img
-    alt=""
+  <Image
+    {...props}
+    alt={props.alt || ""}
     className={cn("h-8 w-8 rounded border object-cover", className)}
     height={32}
+    src={(props.src as string) || ""}
     width={32}
-    {...props}
+    unoptimized
   />
 );
 

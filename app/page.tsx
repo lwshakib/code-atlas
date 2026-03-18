@@ -14,36 +14,19 @@ import {
   MessagesSquare, 
   Search, 
   Gauge, 
-  Sparkles, 
-  ArrowUpRight,
   Star,
-  LogOut,
-  User,
-  Settings
+  ArrowUpRight
 } from 'lucide-react';
 import BackgroundCanvas from '@/components/background-canvas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LogoWithText } from '@/components/Logo';
 import Link from 'next/link';
+import Image from 'next/image';
 import { authClient } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
-import { 
-  Avatar, 
-  AvatarImage, 
-  AvatarFallback 
-} from '@/components/ui/avatar';
 import { UserMenu } from '@/components/UserMenu';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 const ScrollingCode = ({ color = "text-blue-400/20" }) => {
@@ -169,7 +152,7 @@ export default function LandingPage() {
   };
 
   const [repoUrl, setRepoUrl] = React.useState("");
-  const [isExploring, setIsExploring] = React.useState(false);
+  const [isExploring] = React.useState(false);
 
   const handleExplore = async () => {
     if (!repoUrl.trim()) {
@@ -209,9 +192,9 @@ export default function LandingPage() {
         <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex items-center w-1/3">
-            <a href="/">
+            <Link href="/">
               <LogoWithText size={28} />
-            </a>
+            </Link>
           </div>
 
           {/* Right: Auth Action */}
@@ -237,10 +220,12 @@ export default function LandingPage() {
       <header className="relative w-full h-screen flex flex-col justify-end pb-12 sm:pb-24 px-6 overflow-hidden">
         {/* Background AI Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <img 
+          <Image 
             src="/hero-atlas-new.jpg" 
             alt="Codebase Atlas Visualization" 
             className="w-full h-full object-cover object-center opacity-60" 
+            priority
+            fill
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
         </div>
@@ -394,7 +379,7 @@ export default function LandingPage() {
                 </div>
                 <h4 className="font-bold text-lg mb-3">Linked back to your code</h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Instantly jump from an architectural overview to the exact service, or from a function's description to its definition.
+                  Instantly jump from an architectural overview to the exact service, or from a function&apos;s description to its definition.
                 </p>
               </div>
             </div>
@@ -425,7 +410,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-muted-foreground text-lg mb-12 max-w-lg">
               Ask questions about your architecture, find function definitions, and understand complex logic in natural language. 
-              It's like having an engineer on call, 24/7.
+              It&apos;s like having an engineer on call, 24/7.
             </p>
 
             <div className="space-y-6">

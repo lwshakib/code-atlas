@@ -32,7 +32,7 @@ export const IndexingCompleteEmail = ({
         </Section>
         <Section style={contentSection}>
           <Text style={text}>
-            Good news! We've finished indexing <strong>{codebaseName}</strong>.
+            Good news! We&apos;ve finished indexing <strong>{codebaseName}</strong>.
             Your architectural map, developer wiki, and agentic chat are now fully
             initialized and ready for exploration.
           </Text>

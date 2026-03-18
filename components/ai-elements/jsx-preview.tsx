@@ -144,7 +144,7 @@ export const JSXPreview = memo(
   }: JSXPreviewProps) => {
     const [prevJsx, setPrevJsx] = useState(jsx);
     const [error, setError] = useState<Error | null>(null);
-    const [_lastGoodJsx, setLastGoodJsx] = useState("");
+    const [, setLastGoodJsx] = useState("");
 
     // Clear error when jsx changes (derived state pattern)
     if (jsx !== prevJsx) {
@@ -206,25 +206,38 @@ export const JSXPreviewContent = memo(
       setLastGoodJsx,
       onErrorProp,
     } = useJSXPreview();
-    const errorReportedRef = useRef<string | null>(null);
-    const lastGoodJsxRef = useRef("");
-    const [hadError, setHadError] = useState(false);
 
-    // Reset error tracking when jsx changes
-    useEffect(() => {
-      errorReportedRef.current = null;
+    const errorReportedRef = useRef<string | null>(null);
+    const [hadError, setHadError] = useState(false);
+    const [localLastGoodJsx, setLocalLastGoodJsx] = useState("");
+    const [prevProcessedJsx, setPrevProcessedJsx] = useState(processedJsx);
+
+    // Derived state: reset error tracking and update last good JSX when prop changes
+    // This happens during render, which is the recommended way to adjust state to prop changes.
+    if (processedJsx !== prevProcessedJsx) {
+      // If the previous version was successful, remember it as the "last good" one
+      if (!hadError && prevProcessedJsx) {
+        setLocalLastGoodJsx(prevProcessedJsx);
+      }
+      setPrevProcessedJsx(processedJsx);
       setHadError(false);
-    }, [processedJsx]);
+    }
+
+    // Keep parent context updated with the last good JSX
+    useEffect(() => {
+      if (localLastGoodJsx) {
+        setLastGoodJsx(localLastGoodJsx);
+      }
+    }, [localLastGoodJsx, setLastGoodJsx]);
 
     const handleError = useCallback(
       (err: Error) => {
-        // Prevent duplicate error reports for the same jsx
+        // Prevent duplicate error reports for the same frame
         if (errorReportedRef.current === processedJsx) {
           return;
         }
         errorReportedRef.current = processedJsx;
 
-        // During streaming, suppress errors and fall back to last good JSX
         if (isStreaming) {
           setHadError(true);
           return;
@@ -236,17 +249,8 @@ export const JSXPreviewContent = memo(
       [processedJsx, isStreaming, onErrorProp, setError],
     );
 
-    // Track the last JSX that rendered without error
-    useEffect(() => {
-      if (!errorReportedRef.current) {
-        lastGoodJsxRef.current = processedJsx;
-        setLastGoodJsx(processedJsx);
-      }
-    }, [processedJsx, setLastGoodJsx]);
-
-    // During streaming, if the current JSX errored, re-render with last good version
-    const displayJsx =
-      isStreaming && hadError ? lastGoodJsxRef.current : processedJsx;
+    // During streaming, if the current JSX errored, fall back to last good version
+    const displayJsx = isStreaming && hadError ? localLastGoodJsx : processedJsx;
 
     return (
       <div className={cn("jsx-preview-content", className)} {...props}>

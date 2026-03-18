@@ -7,11 +7,7 @@ import {
   Pencil, 
   Trash2, 
   X, 
-  RefreshCw,
-
-  AlertCircle,
-  CheckCircle2,
-  Clock
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -28,10 +24,18 @@ import { useInngestSubscription } from "@inngest/realtime/hooks";
 import { fetchRealtimeSubscriptionToken, cancelAndCleanupIndexingAction, retryIndexingAction } from "@/actions/codebases";
 import { toast } from "sonner";
 
+interface Codebase {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  status: string;
+}
+
 interface CodebaseRowProps {
-  codebase: any;
-  onRename: (cb: any) => void;
-  onDelete: (cb: any) => void;
+  codebase: Codebase;
+  onRename: (cb: Codebase) => void;
+  onDelete: (cb: Codebase) => void;
   removeCodebase: (id: string) => void;
   onStatusChange?: (id: string, newStatus: string) => void;
 }
@@ -94,23 +98,7 @@ export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onSt
     }
   };
 
-  const getStatusIcon = () => {
-    switch (currentStatus) {
-      case "INDEXING":
-        return <RefreshCw className="w-3 h-3 animate-spin text-primary" />;
-      case "PENDING":
-        return <Clock className="w-3 h-3 text-muted-foreground animate-pulse" />;
-      case "COMPLETED":
-        return <CheckCircle2 className="w-3 h-3 text-emerald-500" />;
-      case "FAILED":
-        return <AlertCircle className="w-3 h-3 text-destructive" />;
-      default:
-        return null;
-    }
-  };
 
-  const showCancel = currentStatus === "PENDING" || currentStatus === "INDEXING";
-  const showRetry = currentStatus === "FAILED";
 
   return (
     <TableRow className="border-b border-border/50 hover:bg-secondary/10 transition-colors group">
