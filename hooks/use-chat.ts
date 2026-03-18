@@ -90,6 +90,7 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
                 return updated;
               });
             } else if (data.type === "tool") {
+              console.log(`[useChat] Tool ${data.status}: ${data.tool} (${data.id})`, data.result || "");
               setMessages((prev) => {
                 const updated = prev.map((msg) => {
                   if (msg.id !== assistantMessageId) return msg;

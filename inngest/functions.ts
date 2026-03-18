@@ -9,14 +9,7 @@ import { codebaseChannel } from "./channels";
 import { generateObjectFromGLM } from "@/llm/generateObject";
 import { z } from "zod";
 
-export const helloWorld = inngest.createFunction(
-  { id: "hello-world" },
-  { event: "test/hello.world" },
-  async ({ event, step }) => {
-    await step.sleep("wait-a-moment", "1s");
-    return { message: `Hello ${event.data.email}!` };
-  },
-);
+
 
 
 export const indexCodebase = inngest.createFunction(
@@ -253,3 +246,8 @@ function isRelevantFile(path: string): boolean {
   ];
   return !ignoredExtensions.some((ext) => path.toLowerCase().endsWith(ext)) && !path.includes('node_modules/') && !path.includes('.next/');
 }
+
+
+
+
+

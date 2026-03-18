@@ -149,12 +149,12 @@ export default function CodebaseDetailsPage() {
   const chatStreamdownComponents = {
     code: ({ inline, className, children }: any) => {
       const match = /language-(\w+)/.exec(className || "");
-      const language = match ? match[1] : "text";
+      const language = match ? match[1] : null;
       const codeText = String(children).replace(/\n$/, "");
 
-      if (inline) {
+      if (inline || !language) {
         return (
-          <code className={cn("bg-primary/10 px-1.5 py-0.5 rounded text-primary font-mono text-[0.9em]", className)}>
+          <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
             {children}
           </code>
         );
@@ -164,15 +164,15 @@ export default function CodebaseDetailsPage() {
         <CodeBlock 
           code={codeText} 
           language={language as any}
-          className="my-4 border border-border/10 rounded-xl overflow-hidden shadow-lg"
+          className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
         >
-          <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-3 py-1.5">
-            <CodeBlockTitle className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-              <FileCode className="w-3 h-3" />
+          <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
+            <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-2">
+              <FileCode className="w-3.5 h-3.5 text-primary/50" />
               {language}
             </CodeBlockTitle>
             <CodeBlockActions>
-              <CodeBlockCopyButton className="size-6 text-muted-foreground/30 hover:text-primary transition-all rounded-md" />
+              <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 transition-all rounded-lg" />
             </CodeBlockActions>
           </CodeBlockHeader>
         </CodeBlock>
@@ -337,12 +337,12 @@ export default function CodebaseDetailsPage() {
                           components={{
                             code: ({ inline, className, children }: any) => {
                               const match = /language-(\w+)/.exec(className || "");
-                              const language = match ? match[1] : "text";
+                              const language = match ? match[1] : null;
                               const codeText = String(children).replace(/\n$/, "");
 
-                              if (inline) {
+                              if (inline || !language) {
                                 return (
-                                  <code className={cn("bg-primary/5 px-1.5 py-0.5 rounded text-primary font-mono text-[0.9em]", className)}>
+                                  <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
                                     {children}
                                   </code>
                                 );
@@ -385,7 +385,7 @@ export default function CodebaseDetailsPage() {
                                   components={{
                                     code: ({ inline, className, children }: any) => {
                                       const match = /language-(\w+)/.exec(className || "");
-                                      const language = match ? match[1] : "text";
+                                      const language = match ? match[1] : null;
                                       const codeText = String(children).replace(/\n$/, "");
 
                                       if (inline) {
@@ -467,34 +467,28 @@ export default function CodebaseDetailsPage() {
                               {m.role === 'assistant' ? (
                                 <div className="space-y-4">
                                   {m.toolInvocations && m.toolInvocations.map((tool) => (
-                                    <div key={tool.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-primary/10 bg-primary/5 w-fit animate-in fade-in slide-in-from-left-2">
+                                    <div key={tool.id} className="flex items-center gap-2.5 py-1 w-fit animate-in fade-in slide-in-from-left-2">
                                       {tool.status === 'calling' ? (
                                         <>
-                                          <div className="relative size-4 flex items-center justify-center">
-                                            <Search className="size-3.5 text-primary animate-pulse" />
-                                            <div className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent animate-spin" />
+                                          <div className="relative size-3.5 flex items-center justify-center">
+                                            <Search className="size-3 text-primary animate-pulse" />
+                                            <div className="absolute inset-0 rounded-full border border-primary/20 border-t-transparent animate-spin" />
                                           </div>
-                                          <div className="flex flex-col">
-                                            <Shimmer className="text-[10px] font-bold uppercase tracking-wider">
-                                              {tool.tool === 'search_codebase' ? 'Searching code...' : 'Querying relations...'}
-                                            </Shimmer>
-                                          </div>
+                                          <Shimmer className="text-[11px] font-medium tracking-tight text-primary/80">
+                                            {tool.tool === 'search_codebase' ? 'Searching code' : 'Querying relations'}
+                                          </Shimmer>
                                         </>
                                       ) : tool.status === 'success' ? (
                                         <>
-                                          <div className="size-4 flex items-center justify-center rounded-full bg-primary/20">
-                                            <Activity className="size-3 text-primary" />
-                                          </div>
-                                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                                          <Activity className="size-3 text-primary/60" />
+                                          <span className="text-[11px] font-medium tracking-tight text-primary/60">
                                             {tool.tool === 'search_codebase' ? 'Search complete' : 'Relations found'}
                                           </span>
                                         </>
                                       ) : (
                                         <>
-                                          <div className="size-4 flex items-center justify-center rounded-full bg-destructive/20">
-                                            <X className="size-3 text-destructive" />
-                                          </div>
-                                          <span className="text-[10px] font-bold uppercase tracking-wider text-destructive/70">
+                                          <X className="size-3 text-destructive/60" />
+                                          <span className="text-[11px] font-medium tracking-tight text-destructive/60">
                                             Error
                                           </span>
                                         </>

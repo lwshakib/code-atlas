@@ -37,6 +37,7 @@ export const aiTools = [
 export async function executeTool(name: string, args: any, codebaseId: string) {
   if (name === "search_codebase") {
     const { query } = args;
+    console.log(`[Tool: search_codebase] Query: "${query}" | Codebase: ${codebaseId}`);
     const embedding = await generateEmbeddings(query);
     const index = getPineconeIndex();
     const result = await index.query({
@@ -45,6 +46,7 @@ export async function executeTool(name: string, args: any, codebaseId: string) {
       filter: { codebaseId: { $eq: codebaseId } },
       includeMetadata: true
     });
+    console.log(`[Tool: search_codebase] Found ${result.matches.length} matches in Pinecone`);
     return result.matches.map(m => ({
       path: m.metadata?.path,
       snippet: m.metadata?.contentSnippet,
@@ -54,10 +56,12 @@ export async function executeTool(name: string, args: any, codebaseId: string) {
 
   if (name === "query_graph_relations") {
     const { cypher } = args;
+    console.log(`[Tool: query_graph_relations] Cypher: "${cypher}" | Codebase: ${codebaseId}`);
     const driver = getNeo4jDriver();
     const session = driver.session();
     try {
       const result = await session.executeRead(tx => tx.run(cypher, { codebaseId }));
+      console.log(`[Tool: query_graph_relations] Returned ${result.records.length} records from Neo4j`);
       return result.records.map(r => r.toObject());
     } finally {
       await session.close();

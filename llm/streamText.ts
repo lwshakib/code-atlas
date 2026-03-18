@@ -53,18 +53,21 @@ export async function streamTextFromGLM(
 
       let currentReader = reader;
       let toolCalls: any[] = [];
-      let isFirstPass = true;
+      let turnCount = 0;
+      const MAX_TURNS = 6; // Hard limit for safety
 
       try {
         const streamJson = (obj: any) => {
           controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));
         };
 
-        while (true) {
+        while (turnCount < MAX_TURNS) {
           const { done, value } = await currentReader.read();
 
           if (done) {
             if (toolCalls.length > 0) {
+              turnCount++;
+              
               const assistantMessage = { role: "assistant", tool_calls: toolCalls };
               currentMessages.push(assistantMessage);
 
@@ -104,7 +107,7 @@ export async function streamTextFromGLM(
                 },
                 body: JSON.stringify({
                   messages: currentMessages,
-                  tools: options.tools,
+                  tools: turnCount < MAX_TURNS ? options.tools : undefined, // Stop giving tools on last turn
                   stream: true
                 }),
                 signal
