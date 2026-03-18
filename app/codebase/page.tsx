@@ -138,6 +138,18 @@ export default function CodebasePage() {
   React.useEffect(() => {
     if (session) {
       fetchUserCodebases();
+      
+      // Check for pending repo URL from landing page
+      const pendingRepo = localStorage.getItem('pending_repo_url');
+      if (pendingRepo) {
+        localStorage.removeItem('pending_repo_url');
+        handleIndex(pendingRepo).then(() => {
+          // If we want to redirect to the new codebase, handleIndex handles the fetch, 
+          // but we might need to find the ID. 
+          // Actually, handleIndex in codebase/page.tsx just refreshes the list.
+          // Let's modify handleIndex to optionally return the ID or redirect.
+        });
+      }
     }
   }, [session]);
 
@@ -198,10 +210,9 @@ export default function CodebasePage() {
       const result = await response.json();
       
       if (result.success) {
-        toast.success("Codebase indexed successfully!", { id: "indexing" });
+        toast.success("Codebase indexing started!", { id: "indexing" });
         setIsNewCodebaseOpen(false);
         fetchUserCodebases();
-        router.refresh();
       } else {
         toast.error(result.error || "Failed to index codebase", { id: "indexing" });
       }

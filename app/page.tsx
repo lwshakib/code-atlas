@@ -44,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 const ScrollingCode = ({ color = "text-blue-400/20" }) => {
   const codeSnippet = `
@@ -167,6 +168,28 @@ export default function LandingPage() {
     }
   };
 
+  const [repoUrl, setRepoUrl] = React.useState("");
+  const [isExploring, setIsExploring] = React.useState(false);
+
+  const handleExplore = async () => {
+    if (!repoUrl.trim()) {
+      toast.error("Please enter a GitHub URL");
+      return;
+    }
+
+    const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+    if (!match) {
+      toast.error("Invalid GitHub URL. Please use a format like: https://github.com/username/repository");
+      return;
+    }
+
+    const repoFullName = match[1];
+
+    // Save for the dashboard and redirect
+    localStorage.setItem('pending_repo_url', repoFullName);
+    router.push('/codebase');
+  };
+
   React.useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -254,14 +277,20 @@ export default function LandingPage() {
                 </div>
                 <Input 
                   type="text" 
-                  placeholder="Paste GitHub repository URL..." 
+                  placeholder="Paste public GitHub repository URL..." 
                   className="w-full bg-secondary/30 border-border rounded-lg py-6 pl-10 pr-32 text-sm focus-visible:ring-primary/20"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleExplore()}
                 />
-                <Link href="/codebase">
-                  <Button className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6" size="sm">
-                    Explore
-                  </Button>
-                </Link>
+                <Button 
+                  className="absolute right-1.5 top-1.5 h-[calc(100%-12px)] px-6" 
+                  size="sm"
+                  onClick={handleExplore}
+                  disabled={isExploring}
+                >
+                  {isExploring ? <RefreshCcw className="w-4 h-4 animate-spin" /> : "Explore"}
+                </Button>
               </div>
               <p className="text-[10px] text-muted-foreground mt-3 ml-1">Example: https://github.com/facebook/react</p>
             </div>
