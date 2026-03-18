@@ -455,13 +455,7 @@ export default function CodebaseDetailsPage() {
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className="h-full bg-secondary/10 rounded-[2.5rem] border border-border/30 overflow-hidden flex flex-col relative shadow-2xl shadow-primary/5"
                 >
-                  {/* Close button */}
-                  <button 
-                    onClick={() => setShowChat(false)}
-                    className="absolute top-6 right-6 p-2 rounded-full hover:bg-secondary/50 text-muted-foreground/50 hover:text-foreground transition-all z-10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+
 
                   <Conversation className="flex-1">
                     <ConversationContent className="pb-32 pt-12 px-6">

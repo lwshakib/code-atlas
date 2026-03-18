@@ -397,10 +397,10 @@ export const ToolCallStatus = ({ toolInvocations }: ToolCallStatusProps) => {
   if (!activeTool) return null;
 
   const label = 
-    activeTool.tool === 'search_codebase' ? 'Searching Codebase' : 
-    activeTool.tool === 'list_files' ? 'Listing Repository Files' :
-    activeTool.tool === 'get_file_content' ? 'Reading File Content' :
-    activeTool.tool === 'query_graph_relations' ? 'Querying Knowledge Graph' :
+    activeTool.tool === 'search_codebase' ? 'Querying Codebase' : 
+    activeTool.tool === 'list_files' ? 'Exploring Materials' :
+    activeTool.tool === 'get_file_content' ? 'Analyzing Blueprints' :
+    activeTool.tool === 'query_graph_relations' ? 'Mapping Intelligence' :
     'Architect is Thinking...';
 
   return (
