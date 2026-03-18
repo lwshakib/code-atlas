@@ -8,19 +8,28 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 function sanitizeJSON(content: string): string {
   let clean = content.trim();
   
-  // 1. Strip markdown fences if present
+  // 1. Try to find the outermost braces {}
+  const firstBrace = clean.indexOf("{");
+  const lastBrace = clean.lastIndexOf("}");
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    // Check if there's a JSON markdown block that contains these braces
+    // (Optional but good if the LLM provided valid JSON inside a fenced block)
+    const jsonMatch = clean.match(/```json\n?([\s\S]*?)\n?```/i);
+    if (jsonMatch) {
+      return jsonMatch[1].trim();
+    }
+
+    // Otherwise, just extract everything from the first { to the last }
+    return clean.substring(firstBrace, lastBrace + 1);
+  }
+
+  // 2. Fallback: Strip markdown fences if present
   if (clean.includes("```")) {
     const match = clean.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
     if (match) {
-      clean = match[1].trim();
+      return match[1].trim();
     }
-  }
-
-  // 2. Extract content between first { and last } to handle trailing/leading text
-  const firstBrace = clean.indexOf("{");
-  const lastBrace = clean.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    clean = clean.substring(firstBrace, lastBrace + 1);
   }
 
   return clean;

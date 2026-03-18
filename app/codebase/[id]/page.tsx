@@ -152,7 +152,7 @@ export default function CodebaseDetailsPage() {
       const language = match ? match[1] : null;
       const codeText = String(children).replace(/\n$/, "");
 
-      if (inline || !language) {
+      if (inline || !language || !className) {
         return (
           <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
             {children}
@@ -340,7 +340,7 @@ export default function CodebaseDetailsPage() {
                               const language = match ? match[1] : null;
                               const codeText = String(children).replace(/\n$/, "");
 
-                              if (inline || !language) {
+                              if (inline || !language || !className) {
                                 return (
                                   <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
                                     {children}
@@ -388,9 +388,9 @@ export default function CodebaseDetailsPage() {
                                       const language = match ? match[1] : null;
                                       const codeText = String(children).replace(/\n$/, "");
 
-                                      if (inline) {
+                                      if (inline || !language || !className) {
                                         return (
-                                          <code className={cn("bg-primary/5 px-1.2 py-0.3 rounded text-primary font-mono text-[0.85em]", className)}>
+                                          <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
                                             {children}
                                           </code>
                                         );

@@ -8,6 +8,7 @@ import { generateEmbeddings, generateBatchEmbeddings } from "@/llm/embeddings";
 import { codebaseChannel } from "./channels";
 import { generateObjectFromGLM } from "@/llm/generateObject";
 import { z } from "zod";
+import { DOCS_GENERATION_SYSTEM_PROMPT } from "@/llm/prompts";
 
 
 
@@ -113,9 +114,10 @@ export const indexCodebase = inngest.createFunction(
                   `
                   MERGE (c:Codebase {id: $codebaseId})
                   MERGE (f:File {path: $path, codebaseId: $codebaseId})
+                  SET f.content = $content
                   MERGE (f)-[:BELONGS_TO]->(c)
                   `,
-                  { codebaseId, path: file.path }
+                  { codebaseId, path: file.path, content }
                 )
               );
             }
@@ -151,15 +153,30 @@ export const indexCodebase = inngest.createFunction(
             })
         );
 
-        const treeContext = treeData.map(f => f.path).slice(0, 100).join("\n"); // Limit tree context
+        const treeContext = treeData.map(f => f.path).slice(0, 250).join("\n"); // Increased tree context
 
-        const prompt = `Analyze this repository: ${repoFullName}\n\nFiles present (partial):\n${treeContext}\n\nImportant File Contents:\n${contextFiles.join("\n\n")}\n\nGenerate a comprehensive documentation structure and a list of 20+ insightful questions about this codebase.`;
+        const prompt = `Analyze this repository: ${repoFullName}
+
+REPOSITORY STRUCTURE:
+${treeContext}
+
+CORE FILE CONTENTS:
+${contextFiles.join("\n\n")}
+
+TASK:
+Generate a MASSIVELY detailed, multi-page developer wiki for this repository. 
+1. EXHAUSTIVE COVERAGE: Every major directory and core file must be explained. Do not be generic; mention specific file names and their exact roles.
+2. COMPLEX FLOWS: For complex interactions (e.g., auth flows, indexing pipelines, data migrations), use 'mermaid' code blocks to create architecture diagrams or flowcharts. Use standard styles (no custom colors).
+3. PAGE STRUCTURE: Generate 6-10 main pages, each with multiple subsections. Be granular. Every page should have high-quality Markdown content.
+4. INSIGHTFUL QUESTIONS: Generate 25+ specific questions that a developer should ask to master this codebase.
+
+Think step-by-step about the architecture, tech stack, and data flow before generating the content.`;
 
         const result = await generateObjectFromGLM({
           messages: [
             { 
               role: "system", 
-              content: "You are a lead software engineer. Your task is to generate developer documentation and interactive questions for a repository. The documentation should be high-quality Markdown. The questions should be specific to the codebase to help users understand how it works." 
+              content: DOCS_GENERATION_SYSTEM_PROMPT 
             },
             { role: "user", content: prompt }
           ],
