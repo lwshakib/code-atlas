@@ -58,10 +58,21 @@ export async function POST(req: Request) {
 
     // 1. Get Repository Info
     const [owner, repo] = repoFullName.split("/");
-    const { data: repoInfo } = await octokit.rest.repos.get({
-      owner,
-      repo,
-    });
+    let repoInfo;
+    try {
+      const response = await octokit.rest.repos.get({
+        owner,
+        repo,
+      });
+      repoInfo = response.data;
+    } catch (err: any) {
+      if (err.status === 404) {
+        return NextResponse.json({ 
+          error: "Repository not found or private. Please check the URL and ensure your GitHub account has the necessary permissions." 
+        }, { status: 404 });
+      }
+      throw err;
+    }
 
     // 2. Create Codebase Record in Postgres
     let codebase = await prisma.codebase.findFirst({
