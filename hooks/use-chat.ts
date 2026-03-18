@@ -3,10 +3,18 @@
 import { useState, useCallback, useRef } from "react";
 import { nanoid } from "nanoid";
 
+export type ToolInvocation = {
+  id: string;
+  tool: string;
+  status: "calling" | "success" | "error";
+  result?: any;
+};
+
 export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  toolInvocations?: ToolInvocation[];
 };
 
 export interface UseChatOptions {
@@ -14,22 +22,16 @@ export interface UseChatOptions {
   initialMessages?: Message[];
 }
 
-/**
- * A custom replacement for ai/react useChat hook.
- * Handles streaming text responses from the GLM worker API routes.
- */
 export function useChat({ api, initialMessages = [] }: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Use a ref for messages to always have the latest state for new requests
   const messagesRef = useRef<Message[]>(initialMessages);
 
   const append = useCallback(async (newMessage: { role: "user"; content: string }) => {
     const userMessage: Message = { id: nanoid(), ...newMessage };
     
-    // Add user message to state
     setMessages((prev) => {
       const next = [...prev, userMessage];
       messagesRef.current = next;
@@ -53,30 +55,62 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
       const decoder = new TextDecoder();
       if (!reader) throw new Error("No readable stream in response");
 
-      // Initialize assistant message
       const assistantMessageId = nanoid();
       setMessages((prev) => {
-         const next = [...prev, { id: assistantMessageId, role: "assistant" as const, content: "" }];
+         const next = [...prev, { id: assistantMessageId, role: "assistant" as const, content: "", toolInvocations: [] }];
          messagesRef.current = next;
          return next;
       });
 
       let accumulatedContent = "";
+      let buffer = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        accumulatedContent += chunk;
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
 
-        // Update the assistant message in real-time
-        setMessages((prev) => {
-          const updated = prev.map((msg) =>
-            msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
-          );
-          messagesRef.current = updated;
-          return updated;
-        });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+            
+            if (data.type === "text") {
+              accumulatedContent += data.content;
+              setMessages((prev) => {
+                const updated = prev.map((msg) =>
+                  msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
+                );
+                messagesRef.current = updated;
+                return updated;
+              });
+            } else if (data.type === "tool") {
+              setMessages((prev) => {
+                const updated = prev.map((msg) => {
+                  if (msg.id !== assistantMessageId) return msg;
+                  const tools = [...(msg.toolInvocations || [])];
+                  const existingIdx = tools.findIndex(t => t.id === data.id);
+                  if (existingIdx > -1) {
+                    tools[existingIdx] = { ...tools[existingIdx], status: data.status, result: data.result };
+                  } else {
+                    tools.push({ id: data.id, tool: data.tool, status: data.status, result: data.result });
+                  }
+                  return { ...msg, toolInvocations: tools };
+                });
+                messagesRef.current = updated;
+                return updated;
+              });
+            }
+          } catch (e) {
+            // If it's not JSON, it might be raw text from an older version or error
+            console.warn("[useChat] Received non-JSON chunk:", line);
+          }
+        }
       }
     } catch (error) {
       console.error("[useChat] Error:", error);

@@ -27,7 +27,8 @@ import {
   Send,
   X,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus
 } from 'lucide-react';
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
@@ -37,11 +38,12 @@ import { mermaid } from "@streamdown/mermaid";
 import { 
   CodeBlock, 
   CodeBlockHeader, 
-  CodeBlockTitle, 
+  CodeBlockTitle,
   CodeBlockActions, 
   CodeBlockCopyButton,
   CodeBlockContainer
 } from "@/components/ai-elements/code-block";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import { LogoWithText } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { 
@@ -83,7 +85,8 @@ import {
   MessageContent, 
   MessageResponse 
 } from '@/components/ai-elements/message';
-import { PromptInput } from '@/components/ai-elements/prompt-input';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
@@ -459,13 +462,49 @@ export default function CodebaseDetailsPage() {
                         messages.map((m) => (
                           <AIMessage key={m.id} from={m.role}>
                             <MessageContent className={cn(
-                              "rounded-3xl",
-                              m.role === 'user' ? "bg-primary text-primary-foreground p-5" : "bg-transparent border-none p-0"
+                              m.role === 'user' ? "rounded-3xl bg-primary text-primary-foreground p-5" : "rounded-none bg-transparent border-none p-0"
                             )}>
                               {m.role === 'assistant' ? (
-                                <MessageResponse components={chatStreamdownComponents}>
-                                  {m.content}
-                                </MessageResponse>
+                                <div className="space-y-4">
+                                  {m.toolInvocations && m.toolInvocations.map((tool) => (
+                                    <div key={tool.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-primary/10 bg-primary/5 w-fit animate-in fade-in slide-in-from-left-2">
+                                      {tool.status === 'calling' ? (
+                                        <>
+                                          <div className="relative size-4 flex items-center justify-center">
+                                            <Search className="size-3.5 text-primary animate-pulse" />
+                                            <div className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent animate-spin" />
+                                          </div>
+                                          <div className="flex flex-col">
+                                            <Shimmer className="text-[10px] font-bold uppercase tracking-wider">
+                                              {tool.tool === 'search_codebase' ? 'Searching code...' : 'Querying relations...'}
+                                            </Shimmer>
+                                          </div>
+                                        </>
+                                      ) : tool.status === 'success' ? (
+                                        <>
+                                          <div className="size-4 flex items-center justify-center rounded-full bg-primary/20">
+                                            <Activity className="size-3 text-primary" />
+                                          </div>
+                                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                                            {tool.tool === 'search_codebase' ? 'Search complete' : 'Relations found'}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div className="size-4 flex items-center justify-center rounded-full bg-destructive/20">
+                                            <X className="size-3 text-destructive" />
+                                          </div>
+                                          <span className="text-[10px] font-bold uppercase tracking-wider text-destructive/70">
+                                            Error
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  ))}
+                                  <MessageResponse components={chatStreamdownComponents}>
+                                    {m.content}
+                                  </MessageResponse>
+                                </div>
                               ) : (
                                 <p className="text-sm leading-relaxed">{m.content}</p>
                               )}
@@ -477,68 +516,61 @@ export default function CodebaseDetailsPage() {
                     <ConversationScrollButton />
                   </Conversation>
 
-                  <div className="p-8 pt-0 space-y-4 bg-gradient-to-t from-background via-background/80 to-transparent">
+                  <div className="p-8 pt-4 space-y-6 border-t border-border/5 relative z-20">
                     {messages.length === 0 && (
                       <div className="flex flex-col gap-2 mb-4">
-                         {shuffledQuestions.map((query, index) => (
-                           <button 
-                             key={index}
-                             onClick={() => handleQuestionClick(query)}
-                             className="w-full text-left px-4 py-3 rounded-xl bg-secondary/30 border border-border/10 text-xs text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-all flex items-center justify-between group"
-                           >
-                             {query}
-                             <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                           </button>
-                         ))}
+                          {shuffledQuestions.map((query, index) => (
+                            <button 
+                              key={index}
+                              onClick={() => handleQuestionClick(query)}
+                              className="w-full text-left px-4 py-3 rounded-2xl border border-primary/10 text-[11px] font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between group shadow-sm shadow-primary/5"
+                            >
+                              <span className="truncate mr-4">{query}</span>
+                              <ArrowUpRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all flex-shrink-0" />
+                            </button>
+                          ))}
                       </div>
                     )}
 
-                    <PromptInput
-                      onSubmit={async (data, e) => {
+                    <form
+                      onSubmit={async (e) => {
                         e.preventDefault();
+                        if (!input.trim() || isChatLoading) return;
                         await handleChatSubmit(e as any);
                       }}
-                      className="bg-transparent border-none p-0"
+                      className="relative"
                     >
-                      <InputGroup className="bg-secondary/20 border-border/20 transition-all focus-within:bg-secondary/40 h-auto rounded-2xl overflow-hidden">
-                        <textarea
-                          value={input}
-                          onChange={(e) => {
-                            setInput(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              const form = e.currentTarget.closest('form');
-                              if (form) form.requestSubmit();
-                            }
-                          }}
-                          placeholder="Ask about this repository..." 
-                          className="flex-1 bg-transparent border-none py-4 px-6 text-sm outline-none placeholder:text-muted-foreground/40 resize-none overflow-hidden max-h-48 min-h-[56px]"
-                          rows={1}
-                        />
-                        <div className="flex items-end pb-3 pr-3">
-                          <button 
-                            type="submit"
-                            disabled={!input.trim() || isChatLoading}
-                            className="p-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-30"
+                      <Textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            const form = e.currentTarget.form;
+                            if (form) form.requestSubmit();
+                          }
+                        }}
+                        placeholder="Ask about this repository..."
+                        className="min-h-[100px] max-h-48 bg-transparent border-border/10 focus-visible:ring-primary/20 rounded-2xl pr-14 py-4 resize-none"
+                      />
+                      <Button
+                        type="submit"
+                        disabled={!input.trim() || isChatLoading}
+                        size="icon"
+                        className="absolute right-3 bottom-3 size-9 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+                      >
+                        {isChatLoading ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                           >
-                            {isChatLoading ? (
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                              >
-                                <Activity className="w-4 h-4" />
-                              </motion.div>
-                            ) : (
-                              <Send className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </InputGroup>
-                    </PromptInput>
+                            <Zap className="w-4 h-4" />
+                          </motion.div>
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </form>
 
                   </div>
                 </motion.div>

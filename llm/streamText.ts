@@ -56,16 +56,22 @@ export async function streamTextFromGLM(
       let isFirstPass = true;
 
       try {
+        const streamJson = (obj: any) => {
+          controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));
+        };
+
         while (true) {
           const { done, value } = await currentReader.read();
 
           if (done) {
-            // Check if we accumulated tool calls during the pass
             if (toolCalls.length > 0) {
               const assistantMessage = { role: "assistant", tool_calls: toolCalls };
               currentMessages.push(assistantMessage);
 
               for (const tc of toolCalls) {
+                // Emit calling status
+                streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "calling" });
+
                 try {
                   const result = await executeTool(
                     tc.function.name, 
@@ -77,16 +83,19 @@ export async function streamTextFromGLM(
                     tool_call_id: tc.id,
                     content: JSON.stringify(result)
                   });
+
+                  // Emit success status
+                  streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "success", result });
                 } catch (e) {
                   currentMessages.push({
                     role: "tool",
                     tool_call_id: tc.id,
                     content: JSON.stringify({ error: (e as Error).message })
                   });
+                  streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "error", result: (e as Error).message });
                 }
               }
 
-              // Re-fetch with tools results
               const nextRes = await fetch(GLM_WORKER_URL, {
                 method: "POST",
                 headers: {
@@ -106,7 +115,7 @@ export async function streamTextFromGLM(
               const nextReader = nextRes.body?.getReader();
               if (!nextReader) break;
               currentReader = nextReader;
-              toolCalls = []; // Reset for next potential round
+              toolCalls = []; 
               continue;
             }
             break; 
@@ -125,17 +134,16 @@ export async function streamTextFromGLM(
                 const delta = parsed.choices?.[0]?.delta;
                 
                 if (delta?.tool_calls) {
-                  // Buffer tool calls instead of streaming them
                   for (const tc of delta.tool_calls) {
                     if (!toolCalls[tc.index]) {
-                      toolCalls[tc.index] = { id: tc.id, type: "function", function: { name: "", arguments: "" } };
+                      toolCalls[tc.index] = { id: tc.id || `tc-${tc.index}`, type: "function", function: { name: "", arguments: "" } };
                     }
                     if (tc.id) toolCalls[tc.index].id = tc.id;
                     if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name;
                     if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
                   }
                 } else if (delta?.content) {
-                  controller.enqueue(new TextEncoder().encode(delta.content));
+                  streamJson({ type: "text", content: delta.content });
                 }
               } catch (e) {
                 console.error("Error parsing GLM stream chunk:", e, dataStr);

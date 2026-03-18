@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 
 export const metadata: Metadata = {
@@ -52,7 +53,10 @@ export default function RootLayout({
             forcedTheme="dark"
             disableTransitionOnChange
           >
+            <TooltipProvider>
+
             {children}
+            </TooltipProvider>
           </ThemeProvider>
       </body>
     </html>
