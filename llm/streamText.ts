@@ -80,7 +80,8 @@ export async function streamTextFromGLM(
                     const result = await executeTool(
                       tc.function.name, 
                       JSON.parse(tc.function.arguments),
-                      options.codebaseId || ""
+                      options.codebaseId || "",
+                      signal
                     );
                     streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "success", result });
                     return { id: tc.id, content: JSON.stringify(result) };

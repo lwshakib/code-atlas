@@ -50,7 +50,7 @@ export async function POST(
     const stream = await streamTextFromGLM([systemPrompt, ...messages], {
       tools: aiTools,
       codebaseId
-    });
+    }, req.signal); // Pass the request signal to abort LLM worker/tools on client disconnect
 
     // We split the stream so we can collect the final message to save it
     const [streamToReturn, streamToCollect] = stream.tee();
@@ -61,6 +61,28 @@ export async function POST(
       const decoder = new TextDecoder();
       let fullContent = "";
       let toolCaptures: any[] = [];
+      let lastSavedLength = 0;
+      let lastSavedToolCount = 0;
+
+      const saveProgress = async () => {
+        // Only save if we have new content or new tool results
+        if ((fullContent.length > lastSavedLength) || (toolCaptures.length > lastSavedToolCount)) {
+          if (fullContent || toolCaptures.length > 0) {
+            await prisma.message.create({
+              data: {
+                role: "assistant",
+                parts: [
+                  { type: "text", text: fullContent },
+                  ...toolCaptures
+                ],
+                codebaseId,
+              },
+            });
+            lastSavedLength = fullContent.length;
+            lastSavedToolCount = toolCaptures.length;
+          }
+        }
+      };
 
       try {
         while (true) {
@@ -89,22 +111,16 @@ export async function POST(
             }
           }
         }
-
-        // Save assistant message when done
-        if (fullContent || toolCaptures.length > 0) {
-          await prisma.message.create({
-            data: {
-              role: "assistant",
-              parts: [
-                { type: "text", text: fullContent },
-                ...toolCaptures
-              ],
-              codebaseId,
-            },
-          });
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.log("[POST] Stream collection aborted by client");
+        } else {
+          console.error("[COLLECT_STREAM_ERROR]", err);
         }
-      } catch (err) {
-        console.error("[COLLECT_STREAM_ERROR]", err);
+      } finally {
+        // Final save for partial or full content
+        await saveProgress();
+        reader.releaseLock();
       }
     })();
 

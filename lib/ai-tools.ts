@@ -61,11 +61,13 @@ export const aiTools = [
   }
 ];
 
-export async function executeTool(name: string, args: any, codebaseId: string) {
+export async function executeTool(name: string, args: any, codebaseId: string, signal?: AbortSignal) {
   if (name === "search_codebase") {
     const { query } = args;
     console.log(`[Tool: search_codebase] Query: "${query}" | Codebase: ${codebaseId}`);
-    const embedding = await generateEmbeddings(query);
+    const embedding = await generateEmbeddings(query, signal);
+    
+    signal?.throwIfAborted();
     const index = getPineconeIndex();
     const result = await index.query({
       vector: embedding,
@@ -85,6 +87,7 @@ export async function executeTool(name: string, args: any, codebaseId: string) {
     const { path } = args;
     console.log(`[Tool: get_file_content] Path: "${path}" | Codebase: ${codebaseId}`);
     
+    signal?.throwIfAborted();
     const driver = getNeo4jDriver();
     const session = driver.session();
     try {
@@ -115,6 +118,7 @@ export async function executeTool(name: string, args: any, codebaseId: string) {
     const { directory = "" } = args;
     console.log(`[Tool: list_files] Dir: "${directory}" | Codebase: ${codebaseId}`);
     
+    signal?.throwIfAborted();
     const driver = getNeo4jDriver();
     const session = driver.session();
     try {
@@ -139,6 +143,8 @@ export async function executeTool(name: string, args: any, codebaseId: string) {
   if (name === "query_graph_relations") {
     const { cypher } = args;
     console.log(`[Tool: query_graph_relations] Cypher: "${cypher}" | Codebase: ${codebaseId}`);
+    
+    signal?.throwIfAborted();
     const driver = getNeo4jDriver();
     const session = driver.session();
     try {

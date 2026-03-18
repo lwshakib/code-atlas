@@ -95,7 +95,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
    * @param documents - Array of text strings to embed.
    * @returns A promise resolving to an array of coordinate arrays (embeddings).
    */
-  async embedDocuments(documents: string[]): Promise<number[][]> {
+  async embedDocuments(documents: string[], signal?: AbortSignal): Promise<number[][]> {
     const batches = this.createTokenAwareBatches(documents);
     const results: number[][] = [];
 
@@ -112,7 +112,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
       console.log(
         `[Embeddings] Batch ${i + 1}/${batches.length}: ${batch.length} docs, ~${estimatedTokens} estimated tokens`
       );
-      const batchResult = await this._embedBatch(batch);
+      const batchResult = await this._embedBatch(batch, signal);
       results.push(...batchResult);
     }
 
@@ -122,7 +122,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   /**
    * Internal helper to send a single batch of documents to the Cloudflare worker.
    */
-  private async _embedBatch(documents: string[]): Promise<number[][]> {
+  private async _embedBatch(documents: string[], signal?: AbortSignal): Promise<number[][]> {
     try {
       const response = await fetch(this.workerUrl, {
         method: 'POST',
@@ -133,6 +133,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
         body: JSON.stringify({
           text: documents,
         }),
+        signal,
       });
 
       if (!response.ok) {
@@ -157,7 +158,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
   /**
    * Generates an embedding for a single search query or document.
    */
-  async embedQuery(document: string): Promise<number[]> {
+  async embedQuery(document: string, signal?: AbortSignal): Promise<number[]> {
     try {
       const response = await fetch(this.workerUrl, {
         method: 'POST',
@@ -168,6 +169,7 @@ class CloudflareBgeM3Embeddings extends Embeddings {
         body: JSON.stringify({
           text: [document],
         }),
+        signal,
       });
 
       if (!response.ok) {
@@ -199,15 +201,15 @@ export const getEmbeddings = (taskType?: any, dimensionality?: number) =>
 /**
  * Simple helper to generate embedding for a single string.
  */
-export const generateEmbeddings = async (text: string, taskType?: any) => {
+export const generateEmbeddings = async (text: string, signal?: AbortSignal) => {
   const embeddings = getEmbeddings();
-  return await embeddings.embedQuery(text);
+  return await embeddings.embedQuery(text, signal);
 };
 
 /**
  * Simple helper to generate embeddings for a list of strings in batch.
  */
-export const generateBatchEmbeddings = async (texts: string[], taskType?: any) => {
+export const generateBatchEmbeddings = async (texts: string[], signal?: AbortSignal) => {
   const embeddings = getEmbeddings();
-  return await embeddings.embedDocuments(texts);
+  return await embeddings.embedDocuments(texts, signal);
 };
