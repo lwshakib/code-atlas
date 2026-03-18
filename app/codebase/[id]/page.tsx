@@ -29,7 +29,9 @@ import {
   Sparkles,
   ArrowUpRight,
   Plus,
-  Trash2
+  Trash2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
@@ -258,6 +260,34 @@ export default function CodebaseDetailsPage() {
 
   const handleQuestionClick = (question: string) => {
     append({ role: 'user', content: question });
+  };
+
+  const CopyButton = ({ content }: { content: string }) => {
+    const [copied, setCopied] = React.useState(false);
+    
+    const onCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+      }
+    };
+  
+    return (
+      <button
+        onClick={onCopy}
+        className="mt-1 mr-1 p-1.5 rounded-lg hover:bg-secondary/80 text-muted-foreground/30 hover:text-primary transition-all self-end group-hover:opacity-100 opacity-0 cursor-pointer"
+        title="Copy message"
+      >
+        {copied ? (
+          <Check className="w-3 h-3 text-primary animate-in zoom-in" />
+        ) : (
+          <Copy className="w-3 h-3" />
+        )}
+      </button>
+    );
   };
 
 
@@ -505,20 +535,20 @@ export default function CodebaseDetailsPage() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
+                      <AlertDialogContent size="sm">
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                          <AlertDialogTitle>Clear History</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete all messages in this conversation. This action cannot be undone.
+                            This will permanently delete your chat messages.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={handleClearChat}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            variant="destructive"
                           >
-                            Clear History
+                            Clear
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -546,9 +576,12 @@ export default function CodebaseDetailsPage() {
   <ToolCallStatus toolInvocations={m.toolInvocations} />
 </div>
                               ) : (
-                                <p className="text-sm leading-relaxed">{m.content}</p>
+                                <>
+                                  <p className="text-sm leading-relaxed">{m.content}</p>
+                                </>
                               )}
                             </MessageContent>
+                            {m.role === 'user' && <CopyButton content={m.content} />}
                           </AIMessage>
                         ))
                       )}
