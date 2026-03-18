@@ -37,7 +37,14 @@
 
 ## 🏁 Getting Started
 
-### 1. Prerequisites
+### 1. Clone the Repository
+```bash
+git clone https://github.com/lwshakib/code-atlas.git
+cd code-atlas
+```
+
+### 2. Prerequisites
+
 - Docker (for local Neo4j/Postgres)
 - Node.js & Bun (recommended package manager)
 - API Keys for: Pinecone, Resend, and your chosen LLM provider.

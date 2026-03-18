@@ -27,7 +27,14 @@ First off, thank you for considering contributing to Code Atlas! It's people lik
 
 Code Atlas relies on a specific set of databases and background workers. Follow these steps to get a functional environment:
 
+### 0. Clone the Repository
+```bash
+git clone https://github.com/lwshakib/code-atlas.git
+cd code-atlas
+```
+
 ### 1. Environment Variables
+
 You MUST have a valid `.env` file. See `.env.example` for the required keys.
 Specifically, ensure you have:
 - `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
