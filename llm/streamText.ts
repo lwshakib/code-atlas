@@ -54,6 +54,7 @@ export async function streamTextFromGLM(
       let currentReader = reader;
       let toolCalls: any[] = [];
       let turnCount = 0;
+      let lineBuffer = "";
       const MAX_TURNS = 6; // Hard limit for safety
 
       try {
@@ -125,8 +126,12 @@ export async function streamTextFromGLM(
             break; 
           }
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
+          const chunk = decoder.decode(value, { stream: true });
+          const combined = lineBuffer + chunk;
+          const lines = combined.split("\n");
+
+          // Keep the last (potentially incomplete) line in the buffer
+          lineBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
