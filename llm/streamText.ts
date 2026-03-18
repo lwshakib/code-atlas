@@ -75,6 +75,7 @@ export async function streamTextFromGLM(
               // Execute tool calls in parallel for efficiency
               const toolResults = await Promise.all(
                 toolCalls.map(async (tc) => {
+                  signal?.throwIfAborted();
                   streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "calling" });
                   try {
                     const result = await executeTool(

@@ -22,6 +22,10 @@ export async function POST(
     const { id: codebaseId } = await params;
     const { messages } = await req.json();
 
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    }
+
     // Verify ownership
     const codebase = await prisma.codebase.findUnique({
       where: { id: codebaseId },
@@ -33,13 +37,17 @@ export async function POST(
 
     // Save user message to database
     const userMessage = messages[messages.length - 1];
-    await prisma.message.create({
-      data: {
-        role: "user",
-        parts: [{ type: "text", text: userMessage.content }],
-        codebaseId,
-      },
-    });
+    
+    // Only save if it's a real user message with content
+    if (userMessage && userMessage.role === 'user' && userMessage.content) {
+      await prisma.message.create({
+        data: {
+          role: "user",
+          parts: [{ type: "text", text: userMessage.content }],
+          codebaseId,
+        },
+      });
+    }
 
     // Prepare system prompt 
     const systemPrompt = {
