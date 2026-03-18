@@ -221,7 +221,7 @@ export default function LandingPage() {
         {/* Background AI Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <Image 
-            src="/hero-atlas-new.jpg" 
+            src="/hero/hero-background.jpg" 
             alt="Codebase Atlas Visualization" 
             className="w-full h-full object-cover object-center opacity-60" 
             priority

@@ -1,6 +1,6 @@
 ---
 name: 🐛 Bug Report
-about: Create a report to help us improve Infera Notebook
+about: Create a report to help us improve Code Atlas
 title: '[BUG] '
 labels: ['bug']
 assignees: []
@@ -12,10 +12,13 @@ assignees: []
 
 ## 🛠️ Feature Area
 
-- [ ] AI Notebook Logic
+- [ ] AI Architecture Mapping
+- [ ] Code Chat / Semantic Search
+- [ ] Repository Exploration
 - [ ] UI/UX Components
 - [ ] Database/Prisma
 - [ ] Authentication (Better Auth)
+- [ ] GitHub Integration
 - [ ] Workflow/Inngest
 - [ ] Other: **\_\_**
 

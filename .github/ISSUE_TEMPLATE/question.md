@@ -1,6 +1,6 @@
 ---
 name: ❓ Question
-about: Ask a question about Infera Notebook
+about: Ask a question about Code Atlas
 title: '[Q] '
 labels: ['question']
 assignees: []
