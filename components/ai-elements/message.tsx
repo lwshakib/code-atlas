@@ -22,7 +22,7 @@ import {
 } from "./code-block";
 import { FileCode } from "lucide-react";
 import type { UIMessage } from "ai";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, Loader2 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import {
   createContext,
@@ -382,6 +382,36 @@ export const MessageResponse = memo(
 );
 
 MessageResponse.displayName = "MessageResponse";
+
+export type ToolCallStatusProps = {
+  toolInvocations?: any[];
+};
+
+export const ToolCallStatus = ({ toolInvocations }: ToolCallStatusProps) => {
+  if (!toolInvocations) return null;
+
+  const activeTool = toolInvocations
+    .filter((tool) => tool.status === "calling")
+    .slice(-1)[0];
+
+  if (!activeTool) return null;
+
+  const label = 
+    activeTool.tool === 'search_codebase' ? 'Searching Codebase' : 
+    activeTool.tool === 'list_files' ? 'Listing Repository Files' :
+    activeTool.tool === 'get_file_content' ? 'Reading File Content' :
+    activeTool.tool === 'query_graph_relations' ? 'Querying Knowledge Graph' :
+    'Architect is Thinking...';
+
+  return (
+    <div className="flex items-center gap-2.5 py-2 w-fit animate-in fade-in slide-in-from-bottom-2">
+      <Loader2 className="h-3 w-3 animate-spin text-primary/40" />
+      <div className="text-[11px] font-medium tracking-tight text-primary/50">
+        {label}
+      </div>
+    </div>
+  );
+};
 
 export type MessageToolbarProps = ComponentProps<"div">;
 

@@ -83,7 +83,8 @@ import {
 import { 
   Message as AIMessage, 
   MessageContent, 
-  MessageResponse 
+  MessageResponse,
+  ToolCallStatus
 } from '@/components/ai-elements/message';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -477,40 +478,12 @@ export default function CodebaseDetailsPage() {
                               m.role === 'user' ? "rounded-3xl bg-primary text-primary-foreground p-5" : "rounded-none bg-transparent border-none p-0"
                             )}>
                               {m.role === 'assistant' ? (
-                                <div className="space-y-4">
-                                  {m.toolInvocations && m.toolInvocations.map((tool) => (
-                                    <div key={tool.id} className="flex items-center gap-2.5 py-1 w-fit animate-in fade-in slide-in-from-left-2">
-                                      {tool.status === 'calling' ? (
-                                        <>
-                                          <div className="relative size-3.5 flex items-center justify-center">
-                                            <Search className="size-3 text-primary animate-pulse" />
-                                            <div className="absolute inset-0 rounded-full border border-primary/20 border-t-transparent animate-spin" />
-                                          </div>
-                                          <Shimmer className="text-[11px] font-medium tracking-tight text-primary/80">
-                                            {tool.tool === 'search_codebase' ? 'Searching code' : 'Querying relations'}
-                                          </Shimmer>
-                                        </>
-                                      ) : tool.status === 'success' ? (
-                                        <>
-                                          <Activity className="size-3 text-primary/60" />
-                                          <span className="text-[11px] font-medium tracking-tight text-primary/60">
-                                            {tool.tool === 'search_codebase' ? 'Search complete' : 'Relations found'}
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <X className="size-3 text-destructive/60" />
-                                          <span className="text-[11px] font-medium tracking-tight text-destructive/60">
-                                            Error
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-                                  ))}
-                                  <MessageResponse components={chatStreamdownComponents}>
-                                    {m.content}
-                                  </MessageResponse>
-                                </div>
+<div className="space-y-4">
+  <MessageResponse components={chatStreamdownComponents}>
+    {m.content}
+  </MessageResponse>
+  <ToolCallStatus toolInvocations={m.toolInvocations} />
+</div>
                               ) : (
                                 <p className="text-sm leading-relaxed">{m.content}</p>
                               )}
