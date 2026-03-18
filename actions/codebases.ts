@@ -9,31 +9,37 @@ import { getPineconeIndex } from "@/lib/pinecone";
 import { getSubscriptionToken } from "@inngest/realtime";
 
 export async function cancelAndCleanupIndexingAction(codebaseId: string) {
+  // Get the current user session using Better Auth
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
+  // If no session exists, the user is not logged in
   if (!session) {
     throw new Error("Unauthorized");
   }
 
   try {
+    // Find the specific codebase record in the Postgres database
     const codebase = await prisma.codebase.findUnique({
       where: { id: codebaseId },
     });
 
+    // Verify the codebase exists and belongs to the authenticated user
     if (!codebase || codebase.userId !== session.user.id) {
       throw new Error("Codebase not found or access denied");
     }
 
-    // 1. Send cancellation event to Inngest
+    // 1. Send cancellation event to Inngest background worker
+    // This will stop any ongoing indexing processes for this codebase
     await inngest.send({
       name: "codebase/index.cancel",
       data: { codebaseId },
     });
 
-    // 2. Cleanup data (Pinecone, Neo4j, Postgres)
-    // Delete from Pinecone
+    // 2. Cleanup data from external systems (Pinecone, Neo4j, Postgres)
+    
+    // Delete vector embeddings from Pinecone
     try {
       const pineconeIndex = getPineconeIndex();
       await pineconeIndex.deleteMany({
@@ -43,7 +49,7 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
       console.error("Failed to delete from Pinecone during cancellation:", pcError);
     }
 
-    // Delete from Neo4j
+    // Delete architectural nodes and relationships from Neo4j
     try {
       const driver = getNeo4jDriver();
       const neoSession = driver.session();
@@ -62,7 +68,7 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
       console.error("Failed to delete from Neo4j during cancellation:", neoError);
     }
 
-    // Delete from Postgres
+    // Finally, remove the codebase record from our primary Postgres database
     await prisma.codebase.delete({
       where: { id: codebaseId },
     });
@@ -76,6 +82,7 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
 }
 
 export async function retryIndexingAction(codebaseId: string) {
+    // Verify user session
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -85,14 +92,17 @@ export async function retryIndexingAction(codebaseId: string) {
     }
   
     try {
+      // Fetch the codebase record
       const codebase = await prisma.codebase.findUnique({
         where: { id: codebaseId },
       });
   
+      // Ensure the user owns this codebase
       if (!codebase || codebase.userId !== session.user.id) {
         throw new Error("Codebase not found or access denied");
       }
 
+      // Fetch the GitHub account connected to the user to get a fresh access token
       const account = await prisma.account.findFirst({
         where: {
           userId: session.user.id,
@@ -104,19 +114,19 @@ export async function retryIndexingAction(codebaseId: string) {
          throw new Error("GitHub account not connected");
       }
 
-      // Extract owner and repo from URL
+      // Parse the GitHub URL to extract repository details (owner/repo)
       const urlParts = codebase.url.split("/");
       const owner = urlParts[3];
       const repo = urlParts[4];
       const repoFullName = `${owner}/${repo}`;
   
-      // Update status back to PENDING
+      // Reset the codebase status to PENDING so the UI knows it's starting over
       await prisma.codebase.update({
         where: { id: codebaseId },
         data: { status: "PENDING" },
       });
   
-      // Trigger Inngest background job
+      // Trigger the Inngest 'index.start' event to begin the background indexing process
       await inngest.send({
         name: "codebase/index.start",
         data: {
@@ -135,7 +145,13 @@ export async function retryIndexingAction(codebaseId: string) {
     }
   }
 
+/**
+ * Fetches a short-lived realtime subscription token for the Inngest/Realtime stream.
+ * This allows the client to listen for status updates (e.g. 'indexing', 'completed')
+ * without revealing secret keys.
+ */
 export async function fetchRealtimeSubscriptionToken(codebaseId: string) {
+  // Authentication check
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -144,6 +160,7 @@ export async function fetchRealtimeSubscriptionToken(codebaseId: string) {
     throw new Error("Unauthorized");
   }
 
+  // Request a token from Inngest Realtime specifically for this codebase's channel
   const token = await getSubscriptionToken(inngest, {
     channel: `codebase:${codebaseId}`,
     topics: ["status"],
