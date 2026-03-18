@@ -61,42 +61,43 @@ export async function streamTextFromGLM(
           controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));
         };
 
-        while (turnCount < MAX_TURNS) {
+        while (true) {
           const { done, value } = await currentReader.read();
 
           if (done) {
-            if (toolCalls.length > 0) {
+            if (toolCalls.length > 0 && turnCount < MAX_TURNS) {
               turnCount++;
               
               const assistantMessage = { role: "assistant", tool_calls: toolCalls };
               currentMessages.push(assistantMessage);
 
-              for (const tc of toolCalls) {
-                // Emit calling status
-                streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "calling" });
+              // Execute tool calls in parallel for efficiency
+              const toolResults = await Promise.all(
+                toolCalls.map(async (tc) => {
+                  streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "calling" });
+                  try {
+                    const result = await executeTool(
+                      tc.function.name, 
+                      JSON.parse(tc.function.arguments),
+                      options.codebaseId || ""
+                    );
+                    streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "success", result });
+                    return { id: tc.id, content: JSON.stringify(result) };
+                  } catch (e) {
+                    const errorMsg = (e as Error).message;
+                    streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "error", result: errorMsg });
+                    return { id: tc.id, content: JSON.stringify({ error: errorMsg }) };
+                  }
+                })
+              );
 
-                try {
-                  const result = await executeTool(
-                    tc.function.name, 
-                    JSON.parse(tc.function.arguments),
-                    options.codebaseId || ""
-                  );
-                  currentMessages.push({
-                    role: "tool",
-                    tool_call_id: tc.id,
-                    content: JSON.stringify(result)
-                  });
-
-                  // Emit success status
-                  streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "success", result });
-                } catch (e) {
-                  currentMessages.push({
-                    role: "tool",
-                    tool_call_id: tc.id,
-                    content: JSON.stringify({ error: (e as Error).message })
-                  });
-                  streamJson({ type: "tool", id: tc.id, tool: tc.function.name, status: "error", result: (e as Error).message });
-                }
+              // Add all results to message history
+              for (const tr of toolResults) {
+                currentMessages.push({
+                  role: "tool",
+                  tool_call_id: tr.id,
+                  content: tr.content
+                });
               }
 
               const nextRes = await fetch(GLM_WORKER_URL, {
@@ -107,7 +108,7 @@ export async function streamTextFromGLM(
                 },
                 body: JSON.stringify({
                   messages: currentMessages,
-                  tools: turnCount < MAX_TURNS ? options.tools : undefined, // Stop giving tools on last turn
+                  tools: turnCount < MAX_TURNS ? options.tools : undefined,
                   stream: true
                 }),
                 signal
