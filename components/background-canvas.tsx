@@ -1,6 +1,14 @@
+/**
+ * BACKGROUND CANVAS COMPONENT
+ * 
+ * Renders a high-performance, dynamic WebGL background using a custom fragment shader.
+ * This creates the animated "Obsidian Plasma" aesthetic seen on the landing page.
+ */
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
+
 
 const BackgroundCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

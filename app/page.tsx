@@ -1,3 +1,10 @@
+/**
+ * LANDING PAGE (Hero/Landing)
+ * 
+ * This is the public-facing entry point of the application.
+ * It features high-fidelity animations, a dynamic WebGL background, and a GitHub repository importer.
+ */
+
 "use client";
 
 import React from 'react';
@@ -17,7 +24,7 @@ import {
   Star,
   ArrowUpRight
 } from 'lucide-react';
-import BackgroundCanvas from '@/components/background-canvas';
+import BackgroundCanvas from '@/components/background-canvas'; // Path to the WebGL shader component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +36,10 @@ import { useRouter } from 'next/navigation';
 import { UserMenu } from '@/components/UserMenu';
 import { toast } from 'sonner';
 
+/**
+ * SCROLLING CODE COMPONENT
+ * Renders a stylistic, vertically-auto-scrolling code snippet used for the "Hero" visual background.
+ */
 const ScrollingCode = ({ color = "text-blue-400/20" }) => {
   const codeSnippet = `
 export default function CodeAtlas({ repo }) {
@@ -93,7 +104,7 @@ class ArchitectureMapper {
     this.nodes.set(file, { path: file, metadata: context, type: 'module' });
   }
 }
-  `.repeat(6);
+  `.repeat(6); // Repeat to ensure smooth continuous scrolling
 
   return (
     <div className={`h-full w-full overflow-hidden relative font-mono text-sm sm:text-base leading-relaxed ${color} select-none`}>
@@ -104,6 +115,10 @@ class ArchitectureMapper {
   );
 };
 
+/**
+ * SCROLLING CHAT COMPONENT
+ * Stylistic visual element showing fake chat bubbles scrolling vertically to represent AI interaction.
+ */
 const ScrollingChat = () => {
   const messages = Array.from({ length: 12 }).map((_, i) => ({
     side: i % 2 === 0 ? 'left' : 'right',
@@ -130,20 +145,24 @@ const ScrollingChat = () => {
 };
 
 export default function LandingPage() {
-  const [scrolled, setScrolled] = React.useState(false);
+  const [scrolled, setScrolled] = React.useState(false); // Used to toggle navigation bar styles on scroll
 
+  // 1. Session Information
   const { data: session } = authClient.useSession();
   const router = useRouter();
 
+  // 2. Authentication Logic
   const handleSignIn = async () => {
     await authClient.signIn.social({
       provider: 'github',
-      callbackURL: '/codebase',
+      callbackURL: '/codebase', // Redirect to codebase list after GitHub login
     });
   };
 
-
-
+  /**
+   * GET STARTED HANDLER
+   * Checks if the user is logged in. If not, triggers the sign-in flow.
+   */
   const handleGetStarted = (e: React.MouseEvent) => {
     if (!session) {
       e.preventDefault();
@@ -151,15 +170,21 @@ export default function LandingPage() {
     }
   };
 
+  // 3. Repository Exploration Input State
   const [repoUrl, setRepoUrl] = React.useState("");
   const [isExploring] = React.useState(false);
 
+  /**
+   * EXPLORE HANDLER
+   * Validates a GitHub URL and redirects to the dashboard to begin indexing.
+   */
   const handleExplore = async () => {
     if (!repoUrl.trim()) {
       toast.error("Please enter a GitHub URL");
       return;
     }
 
+    // Regex check for basic GitHub repository format
     const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
     if (!match) {
       toast.error("Invalid GitHub URL. Please use a format like: https://github.com/username/repository");
@@ -168,11 +193,15 @@ export default function LandingPage() {
 
     const repoFullName = match[1];
 
-    // Save for the dashboard and redirect
+    // Store the desired repository in localStorage so the dashboard can pick it up after login/redirect
     localStorage.setItem('pending_repo_url', repoFullName);
     router.push('/codebase');
   };
 
+  /**
+   * SCROLL LISTENER EFFECT
+   * Updates global state to change the opacity/blur of the header as the user scrolls.
+   */
   React.useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -183,6 +212,7 @@ export default function LandingPage() {
 
   return (
     <div className="antialiased selection:bg-primary selection:text-primary-foreground text-foreground bg-background min-h-screen font-sans">
+
       <BackgroundCanvas />
 
       {/* Navigation */}

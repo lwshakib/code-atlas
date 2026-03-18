@@ -1,3 +1,11 @@
+/**
+ * CODEBASE DASHBOARD
+ * 
+ * This page displays a list of the user's synchronize codebases and provides 
+ * tools to import new ones from GitHub. It manages repository fetching, 
+ * indexing status tracking, and basic CRUD operations (Rename/Delete).
+ */
+
 "use client";
 
 import React from 'react';
@@ -41,11 +49,11 @@ import {
   Search,
   Trash2
 } from 'lucide-react';
-import { fetchGithubRepositoriesAction } from "@/actions/github";
+import { fetchGithubRepositoriesAction } from "@/actions/github"; // Action to fetch user repos via Octokit
 import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from "sonner";
-import { CodebaseRow } from '@/components/CodebaseRow';
+import { CodebaseRow } from '@/components/CodebaseRow'; // Individual row component with Realtime status
 
 interface Codebase {
   id: string;
@@ -57,32 +65,42 @@ interface Codebase {
 }
 
 export default function CodebasePage() {
-  const [scrolled, setScrolled] = React.useState(false);
-  const [isNewCodebaseOpen, setIsNewCodebaseOpen] = React.useState(false);
-  const [dialogView, setDialogView] = React.useState<'selection' | 'url' | 'import'>('selection');
-  const [repoUrl, setRepoUrl] = React.useState("");
+  // 1. UI STATE
+  const [scrolled, setScrolled] = React.useState(false); // Header aesthetic state
+  const [isNewCodebaseOpen, setIsNewCodebaseOpen] = React.useState(false); // Modal visibility
+  const [dialogView, setDialogView] = React.useState<'selection' | 'url' | 'import'>('selection'); // Modal routing state
+  
+  // 2. REPOSITORY & SEARCH STATE
+  const [repoUrl, setRepoUrl] = React.useState(""); 
   const [repositories, setRepositories] = React.useState<GithubRepo[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isLoadingRepos, setIsLoadingRepos] = React.useState(false);
   const [isFetchingMore, setIsFetchingMore] = React.useState(false);
-  const [isIndexing, setIsIndexing] = React.useState(false);
-  const [page, setPage] = React.useState(1);
+  const [isIndexing, setIsIndexing] = React.useState(false); // Global indexing lock
+  const [page, setPage] = React.useState(1); // Pagination for GitHub API
   const [hasMore, setHasMore] = React.useState(true);
   const [repoError, setRepoError] = React.useState<string | null>(null);
+
+  // 3. CODEBASE LIST STATE
   const [userCodebases, setUserCodebases] = React.useState<Codebase[]>([]);
   const [isLoadingCodebases, setIsLoadingCodebases] = React.useState(true);
   
-  // Rename/Delete states
+  // 4. CRUD DIALOG STATE
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [selectedCodebase, setSelectedCodebase] = React.useState<Codebase | null>(null);
   const [newName, setNewName] = React.useState("");
-  const [isActionLoading, setIsActionLoading] = React.useState(false);
+  const [isActionLoading, setIsActionLoading] = React.useState(false); // Loading state for Rename/Delete buttons
   
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   
+  // 5. SESSION
   const { data: session } = authClient.useSession();
 
+  /**
+   * FETCH REPOS
+   * Triggers the server action to pull repositories from GitHub API.
+   */
   const fetchRepos = async () => {
     setIsLoadingRepos(true);
     setRepoError(null);
@@ -98,6 +116,10 @@ export default function CodebasePage() {
     setIsLoadingRepos(false);
   };
 
+  /**
+   * FETCH USER CODEBASES
+   * Fetches the list of already-synchronized codebases from our local PostgreSQL database.
+   */
   const fetchUserCodebases = React.useCallback(async () => {
     setIsLoadingCodebases(true);
     try {
@@ -113,6 +135,10 @@ export default function CodebasePage() {
     }
   }, []);
 
+  /**
+   * HANDLE INDEXING
+   * Sends a POST request to /api/codebases to start the background indexing process.
+   */
   const handleIndex = React.useCallback(async (repoFullName: string) => {
     setIsIndexing(true);
     toast.loading("Starting codebase indexing...", { id: "indexing" });
@@ -120,9 +146,7 @@ export default function CodebasePage() {
     try {
       const response = await fetch('/api/codebases', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repoFullName }),
       });
       
@@ -131,7 +155,7 @@ export default function CodebasePage() {
       if (result.success) {
         toast.success("Codebase indexing started!", { id: "indexing" });
         setIsNewCodebaseOpen(false);
-        fetchUserCodebases();
+        fetchUserCodebases(); // Refresh the list to show the new pending entry
       } else {
         toast.error(result.error || "Failed to index codebase", { id: "indexing" });
       }
@@ -142,28 +166,35 @@ export default function CodebasePage() {
     }
   }, [fetchUserCodebases]);
 
+  /**
+   * REMOVE CODEBASE (UI Only)
+   * Local state helper to remove a codebase from the list after deletion.
+   */
   const removeCodebase = (id: string) => {
     setUserCodebases(prev => prev.filter(cb => cb.id !== id));
   };
 
+  /**
+   * INITIALIZATION EFFECT
+   * Loads codebases on mount and checks for "pending_repo_url" (transferred from landing page).
+   */
   React.useEffect(() => {
     if (session) {
       fetchUserCodebases();
       
-      // Check for pending repo URL from landing page
+      // Auto-start indexing if a repo was selected on the landing page
       const pendingRepo = localStorage.getItem('pending_repo_url');
       if (pendingRepo) {
         localStorage.removeItem('pending_repo_url');
-        handleIndex(pendingRepo).then(() => {
-          // If we want to redirect to the new codebase, handleIndex handles the fetch, 
-          // but we might need to find the ID. 
-          // Actually, handleIndex in codebase/page.tsx just refreshes the list.
-          // Let's modify handleIndex to optionally return the ID or redirect.
-        });
+        handleIndex(pendingRepo);
       }
     }
   }, [session, handleIndex, fetchUserCodebases]);
 
+  /**
+   * INFINITE SCROLL FOR REPOS
+   * Loads the next page of GitHub repositories.
+   */
   const loadMore = async () => {
     if (isFetchingMore || !hasMore || searchQuery) return;
     
@@ -183,6 +214,10 @@ export default function CodebasePage() {
     setIsFetchingMore(false);
   };
 
+  /**
+   * SCROLL HANDLER (Inside Repo List)
+   * Triggers infinite scroll when reaching the bottom of the list.
+   */
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop <= clientHeight + 50) {
@@ -190,12 +225,18 @@ export default function CodebasePage() {
     }
   };
 
+  /**
+   * AUTO-FETCH REPOS ON DIALOG CHANGE
+   */
   React.useEffect(() => {
     if (dialogView === 'import' && session && repositories.length === 0) {
       fetchRepos();
     }
   }, [dialogView, session, repositories.length]);
 
+  /**
+   * REDIRECT TO LOGIN
+   */
   const handleSignIn = async () => {
     await authClient.signIn.social({
       provider: 'github',
@@ -203,10 +244,9 @@ export default function CodebasePage() {
     });
   };
 
-
-
-
-
+  /**
+   * SUBMIT PUBLIC URL
+   */
   const handleUrlSubmit = () => {
     if (!repoUrl) return;
     const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
@@ -217,6 +257,9 @@ export default function CodebasePage() {
     }
   };
 
+  /**
+   * GLOBAL WINDOW SCROLL (Header animation)
+   */
   React.useEffect(() => {
     const handleWindowScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -225,11 +268,14 @@ export default function CodebasePage() {
     return () => window.removeEventListener('scroll', handleWindowScroll);
   }, []);
   
+  /**
+   * RENAME HANDLER
+   * Optimistically updates the UI and sends a PATCH request to the API.
+   */
   const handleRename = async () => {
     if (!selectedCodebase || !newName.trim()) return;
     
-    // Save original state for possible rollbacks
-    const originalCodebases = [...userCodebases];
+    const originalCodebases = [...userCodebases]; // Snapshot for rollback
 
     // Optimistically update the UI
     setUserCodebases(prev => prev.map(cb => 
@@ -240,9 +286,7 @@ export default function CodebasePage() {
     try {
       const response = await fetch(`/api/codebases/${selectedCodebase.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName.trim() }),
       });
       
@@ -251,17 +295,19 @@ export default function CodebasePage() {
       if (result.success) {
         toast.success("Codebase renamed successfully");
       } else {
-        // Rollback on error
-        setUserCodebases(originalCodebases);
+        setUserCodebases(originalCodebases); // Rollback
         toast.error(result.error || "Failed to rename codebase");
       }
     } catch {
-      // Rollback on error
-      setUserCodebases(originalCodebases);
+      setUserCodebases(originalCodebases); // Rollback
       toast.error("An unexpected error occurred");
     }
   };
 
+  /**
+   * DELETE HANDLER
+   * Sends a DELETE request to clear entries across multiple systems (Postgres, Pinecone, Neo4j).
+   */
   const handleDelete = async () => {
     if (!selectedCodebase) return;
     setIsActionLoading(true);
@@ -275,7 +321,7 @@ export default function CodebasePage() {
       if (result.success) {
         toast.success("Codebase deleted successfully");
         setIsDeleteDialogOpen(false);
-        fetchUserCodebases();
+        fetchUserCodebases(); // Full refresh ensures consistency
       } else {
         toast.error(result.error || "Failed to delete codebase");
       }
@@ -285,6 +331,7 @@ export default function CodebasePage() {
       setIsActionLoading(false);
     }
   };
+
 
   const handleOpenChange = (open: boolean) => {
     setIsNewCodebaseOpen(open);

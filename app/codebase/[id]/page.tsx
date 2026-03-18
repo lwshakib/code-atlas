@@ -1,3 +1,11 @@
+/**
+ * CODEBASE DETAILS PAGE
+ * 
+ * This is the primary workspace for interacting with a specific codebase.
+ * It features a split-pane layout with an architectural wiki/documentation on the left
+ * and an agentic AI chat on the right.
+ */
+
 "use client";
 
 import React from 'react';
@@ -12,19 +20,19 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { Streamdown } from "streamdown";
+import { Streamdown } from "streamdown"; // Powerful markdown streamer with plugin support
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import type { BundledLanguage } from 'shiki';
-import { Mermaid } from "@/components/ai-elements/mermaid-diagram";
+import { Mermaid } from "@/components/ai-elements/mermaid-diagram"; // Custom component to render Mermaid.js charts
 import { 
   CodeBlock, 
   CodeBlockHeader, 
   CodeBlockTitle,
   CodeBlockActions, 
   CodeBlockCopyButton,
-} from "@/components/ai-elements/code-block";
+} from "@/components/ai-elements/code-block"; // Custom shiki-powered code blocks
 
 import { LogoWithText } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
@@ -45,7 +53,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useChat } from '@/hooks/use-chat';
+import { useChat } from '@/hooks/use-chat'; // Custom Vercel AI SDK wrapper for streaming
 import { 
   Conversation, 
   ConversationContent, 
@@ -77,22 +85,25 @@ interface CodebaseData {
   id: string;
   docPages: CodebaseDocPage[];
   recommendations?: { text: string }[];
-  messages?: unknown[]; // Changed from any to unknown
+  messages?: unknown[]; 
 }
 
+// Global plugins for the Streamdown markdown engine
 const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
-  const [scrolled, setScrolled] = React.useState(false);
+  // 1. PAGE STATE
+  const [scrolled, setScrolled] = React.useState(false); // Navigation aesthetic
   const params = useParams();
   const codebaseId = params.id as string;
-  const [activePageId, setActivePageId] = React.useState<string | null>(null);
-  const [showChat, setShowChat] = React.useState(true);
-  const [codebase, setCodebase] = React.useState<CodebaseData | null>(null);
-  const [shuffledQuestions, setShuffledQuestions] = React.useState<string[]>([]);
+  const [activePageId, setActivePageId] = React.useState<string | null>(null); // Controls which doc page is rendered
+  const [showChat, setShowChat] = React.useState(true); // Toggle visibility of the chat sidebar
+  const [codebase, setCodebase] = React.useState<CodebaseData | null>(null); // The full repository metadata/docs
+  const [shuffledQuestions, setShuffledQuestions] = React.useState<string[]>([]); // Randomly picked "starting questions"
 
-  const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
+  const [expandedItems, setExpandedItems] = React.useState<string[]>([]); // Sidebar accordion state
 
+  // 2. CHAT HOOK
   const {
     messages,
     input,
@@ -103,11 +114,14 @@ export default function CodebaseDetailsPage() {
     setMessages,
     stop,
   } = useChat({
-    api: `/api/chat/${codebaseId}`,
+    api: `/api/chat/${codebaseId}`, // The unique streaming endpoint for this specific codebase
     initialMessages: [],
   });
 
-  // Fetch codebase data
+  /**
+   * DATA FETCHING EFFECT
+   * Loads the codebase docs, recommendations, and previous message history on mount.
+   */
   React.useEffect(() => {
     const fetchCodebase = async () => {
       try {
@@ -115,9 +129,11 @@ export default function CodebaseDetailsPage() {
         const result = await response.json();
         if (result.success) {
           setCodebase(result.data);
+          // Restore chat history if any exists in the database
           if (result.data.messages && result.data.messages.length > 0) {
             setMessages(result.data.messages);
           }
+          // Default to the first documentation page
           if (result.data.docPages && result.data.docPages.length > 0) {
             setActivePageId(result.data.docPages[0].id);
           }
@@ -132,7 +148,10 @@ export default function CodebaseDetailsPage() {
     }
   }, [codebaseId, setMessages]);
 
-  // Shuffle questions when chat opens
+  /**
+   * RECOMMENDATION REFRESH EFFECT
+   * Picks 3 random suggested questions from the 'recommendations' list whenever chat resets or opens.
+   */
   React.useEffect(() => {
     if (showChat && (codebase?.recommendations?.length ?? 0) > 0) {
       const allQuestions = codebase!.recommendations!.map((r) => r.text);
@@ -143,12 +162,19 @@ export default function CodebaseDetailsPage() {
     }
   }, [showChat, codebase]);
 
+  /**
+   * SIDEBAR TOGGLE
+   */
   const toggleItem = (label: string) => {
     setExpandedItems(prev => 
       prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]
     );
   };
 
+  /**
+   * CUSTOM MARKDOWN COMPONENTS (FOR CHAT)
+   * Defines how special markdown tokens (code, mermaid) are rendered within chat bubbles.
+   */
   const chatStreamdownComponents = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     code: ({ inline, className, children }: any) => {
@@ -156,6 +182,7 @@ export default function CodebaseDetailsPage() {
       const language = match ? match[1] : null;
       const codeText = String(children).replace(/\n$/, "");
 
+      // Handle simple inline `code` blocks
       if (inline || !language || !className) {
         return (
           <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
@@ -164,10 +191,12 @@ export default function CodebaseDetailsPage() {
         );
       }
 
+      // Handle Mermaid diagrams for visualized architecture
       if (language === "mermaid") {
         return <Mermaid chart={codeText} className="my-6" />;
       }
 
+      // Handle standard code blocks with syntax highlighting and copy buttons
       return (
         <CodeBlock 
           code={codeText} 
@@ -188,6 +217,10 @@ export default function CodebaseDetailsPage() {
     }
   };
 
+  /**
+   * SIDEBAR NAVIGATION HANDLER
+   * Scrolls to a specific documentation page or subsection.
+   */
   const scrollToSection = (id: string, isPage: boolean) => {
     if (isPage) {
       setActivePageId(id);
@@ -195,7 +228,7 @@ export default function CodebaseDetailsPage() {
       return;
     }
 
-    // Scroll to subsection
+    // Direct scroll for subsection anchors
     const element = document.getElementById(id);
     if (element) {
       const navHeight = 100;
@@ -209,6 +242,9 @@ export default function CodebaseDetailsPage() {
     }
   };
 
+  /**
+   * GLOBAL SCROLL LISTENER
+   */
   React.useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -217,23 +253,34 @@ export default function CodebaseDetailsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  /**
+   * CLEAR HISTORY
+   * Triggers a PUT request to the API to wipe database messages for this codebase.
+   */
   const handleClearChat = async () => {
     try {
       const response = await fetch(`/api/codebases/${codebaseId}`, {
         method: "PUT",
       });
       if (response.ok) {
-        setMessages([]);
+        setMessages([]); // Sync UI
       }
     } catch (error) {
       console.error("Failed to clear chat:", error);
     }
   };
 
+  /**
+   * RECOMMENDATION HANDLER
+   * Automatically appends a message to the chat when a suggestion bubble is clicked.
+   */
   const handleQuestionClick = (question: string) => {
     append({ role: 'user', content: question });
   };
 
+  /**
+   * MESSAGE COPY BUTTON
+   */
   const CopyButton = ({ content, isUser }: { content: string; isUser: boolean }) => {
     const [copied, setCopied] = React.useState(false);
     if (!content) return null;
@@ -265,6 +312,7 @@ export default function CodebaseDetailsPage() {
       </button>
     );
   };
+
 
 
 

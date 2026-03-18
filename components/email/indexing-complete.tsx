@@ -1,3 +1,10 @@
+/**
+ * INDEXING COMPLETE EMAIL TEMPLATE
+ * 
+ * Defines the structure of the automated email sent when a codebase indexing run completes.
+ * Uses '@react-email/components' for high-fidelity rendering across different mail clients.
+ */
+
 import {
   Body,
   Button,
@@ -12,6 +19,7 @@ import {
   Text,
 } from '@react-email/components';
 import * as React from 'react';
+
 
 interface IndexingCompleteEmailProps {
   codebaseName: string;

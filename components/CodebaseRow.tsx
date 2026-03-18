@@ -1,3 +1,11 @@
+/**
+ * CODEBASE ROW COMPONENT
+ * 
+ * Renders a single entry in the dashboard's codebase table.
+ * Crucially, it subscribes to 'Inngest Realtime' events for this specific codebase 
+ * to automatically update its status (e.g., INDEXING -> COMPLETED) without page refreshes.
+ */
+
 "use client";
 
 import React from 'react';
@@ -20,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useInngestSubscription } from "@inngest/realtime/hooks";
+import { useInngestSubscription } from "@inngest/realtime/hooks"; // Real-time hook for listening to background job status
 import { fetchRealtimeSubscriptionToken, cancelAndCleanupIndexingAction, retryIndexingAction } from "@/actions/codebases";
 import { toast } from "sonner";
 
@@ -41,24 +49,40 @@ interface CodebaseRowProps {
 }
 
 export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onStatusChange }: CodebaseRowProps) {
+  // 1. LOCAL TRACKING OF THE CURRENT STATUS
   const [currentStatus, setCurrentStatus] = React.useState(codebase.status);
   const [isActionLoading, setIsActionLoading] = React.useState(false);
 
-  // Subscribe to status updates for this codebase
+  /**
+   * INNGEST REALTIME SUBSCRIPTION
+   * Connects to the Inngest event stream for this specific repository.
+   * Uses 'fetchRealtimeSubscriptionToken' to get a scoped JWT for secure web-socket listening.
+   */
   const { latestData } = useInngestSubscription({
     refreshToken: () => fetchRealtimeSubscriptionToken(codebase.id),
   });
 
+  /**
+   * STATUS SYNC EFFECT
+   * Updates the UI whenever a new 'status' event is pushed from the server.
+   */
   React.useEffect(() => {
     if (latestData?.data?.status) {
       setCurrentStatus(latestData.data.status);
-      onStatusChange?.(codebase.id, latestData.data.status);
+      onStatusChange?.(codebase.id, latestData.data.status); // Inform parent about the update
     }
   }, [latestData, codebase.id, onStatusChange]);
 
+
+  /**
+   * CANCEL HANDLER
+   * Triggers a server action to halt the Inngest run and remove partial artifacts from the system.
+   */
   const handleCancel = async () => {
     setIsActionLoading(true);
-    const promise = cancelAndCleanupIndexingAction(codebase.id);
+    const promise = cancelAndCleanupIndexingAction(codebase.id); // Trigger multi-modal cleanup (Postgres/Neo4j/etc)
+    
+    // Show a dynamic toast that reflects the promise state
     toast.promise(promise, {
       loading: "Cancelling and cleaning up...",
       success: "Indexing cancelled and codebase removed",
@@ -68,7 +92,7 @@ export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onSt
     try {
       const result = await promise;
       if (result.success) {
-        removeCodebase(codebase.id); // Remove from UI
+        removeCodebase(codebase.id); // Remove from the dashboard UI immediately
       }
     } catch (error) {
       console.error(error);
@@ -77,9 +101,14 @@ export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onSt
     }
   };
 
+  /**
+   * RETRY HANDLER
+   * Restarts the indexing process for a failed repo.
+   */
   const handleRetry = async () => {
     setIsActionLoading(true);
     const promise = retryIndexingAction(codebase.id);
+    
     toast.promise(promise, {
       loading: "Restarting indexing...",
       success: "Indexing restarted",
@@ -89,7 +118,7 @@ export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onSt
     try {
       const result = await promise;
       if (result.success) {
-        setCurrentStatus("PENDING");
+        setCurrentStatus("PENDING"); // Reset local status to pending to update UI states
       }
     } catch (error) {
       console.error(error);
@@ -97,6 +126,7 @@ export function CodebaseRow({ codebase, onRename, onDelete, removeCodebase, onSt
       setIsActionLoading(false);
     }
   };
+
 
 
 
