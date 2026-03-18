@@ -12,7 +12,15 @@ import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
+import { Mermaid } from "@/components/ai-elements/mermaid-diagram";
+import { 
+  CodeBlock, 
+  CodeBlockHeader, 
+  CodeBlockTitle,
+  CodeBlockActions, 
+  CodeBlockCopyButton
+} from "./code-block";
+import { FileCode } from "lucide-react";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
@@ -318,7 +326,7 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-const streamdownPlugins = { cjk, code, math, mermaid };
+const streamdownPlugins = { cjk, code, math };
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
@@ -328,6 +336,43 @@ export const MessageResponse = memo(
         className,
       )}
       plugins={streamdownPlugins}
+      components={{
+        code: ({ inline, className, children }: any) => {
+          const match = /language-(\w+)/.exec(className || "");
+          const language = match ? match[1] : null;
+          const codeText = String(children).replace(/\n$/, "");
+
+          if (inline || !language || !className) {
+            return (
+              <code className={cn("px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80", className)}>
+                {children}
+              </code>
+            );
+          }
+
+          if (language === "mermaid") {
+            return <Mermaid chart={codeText} className="my-6" />;
+          }
+
+          return (
+            <CodeBlock 
+              code={codeText} 
+              language={language as any}
+              className="my-6 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
+            >
+              <CodeBlockHeader className="bg-secondary/40 border-b border-white/5 px-4 py-2.5 backdrop-blur-sm">
+                <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-2">
+                  <FileCode className="w-3.5 h-3.5 text-primary/50" />
+                  {language}
+                </CodeBlockTitle>
+                <CodeBlockActions>
+                  <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 transition-all rounded-lg" />
+                </CodeBlockActions>
+              </CodeBlockHeader>
+            </CodeBlock>
+          );
+        }
+      }}
       {...props}
     />
   ),

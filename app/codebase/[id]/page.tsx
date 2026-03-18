@@ -34,7 +34,7 @@ import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
+import { Mermaid } from "@/components/ai-elements/mermaid-diagram";
 import { 
   CodeBlock, 
   CodeBlockHeader, 
@@ -88,7 +88,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 
-const streamdownPlugins = { cjk, code, math, mermaid };
+const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
   const [scrolled, setScrolled] = React.useState(false);
@@ -158,6 +158,10 @@ export default function CodebaseDetailsPage() {
             {children}
           </code>
         );
+      }
+
+      if (language === "mermaid") {
+        return <Mermaid chart={codeText} className="my-6" />;
       }
 
       return (
@@ -348,6 +352,10 @@ export default function CodebaseDetailsPage() {
                                 );
                               }
 
+                              if (language === "mermaid") {
+                                return <Mermaid chart={codeText} className="my-8" />;
+                              }
+
                               return (
                                 <CodeBlock 
                                   code={codeText} 
@@ -394,6 +402,10 @@ export default function CodebaseDetailsPage() {
                                             {children}
                                           </code>
                                         );
+                                      }
+
+                                      if (language === "mermaid") {
+                                        return <Mermaid chart={codeText} className="my-8" />;
                                       }
 
                                       return (
