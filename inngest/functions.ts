@@ -18,7 +18,6 @@ import { sendIndexingCompleteEmail } from "@/lib/email";
 export const indexCodebase = inngest.createFunction(
   {
     id: "index-codebase",
-    triggers: { event: "codebase/index.start" },
     cancelOn: [
       {
         event: "codebase/index.cancel",
@@ -26,6 +25,7 @@ export const indexCodebase = inngest.createFunction(
       },
     ],
   },
+  { event: "codebase/index.start" },
   async ({ event, step, publish }) => {
     const { repoFullName, codebaseId, accessToken } = event.data;
     try {

@@ -92,7 +92,8 @@ interface StreamdownCodeProps {
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
-  [key: string]: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  node?: any;
 }
 
 // Global plugins for the Streamdown markdown engine
@@ -468,64 +469,67 @@ export default function CodebaseDetailsPage() {
                         <div className="text-base text-muted-foreground/80 leading-relaxed mb-12">
                           <Streamdown
                             plugins={streamdownPlugins}
-                            components={{
-                              code: ({
-                                inline,
-                                className,
-                                children,
-                              }: StreamdownCodeProps) => {
-                                const match = /language-(\w+)/.exec(
-                                  className || "",
-                                );
-                                const language = match ? match[1] : null;
-                                const codeText = String(children).replace(
-                                  /\n$/,
-                                  "",
-                                );
+                            components={
+                              {
+                                code: ({
+                                  inline,
+                                  className,
+                                  children,
+                                }: StreamdownCodeProps) => {
+                                  const match = /language-(\w+)/.exec(
+                                    className || "",
+                                  );
+                                  const language = match ? match[1] : null;
+                                  const codeText = String(children).replace(
+                                    /\n$/,
+                                    "",
+                                  );
 
-                                if (inline || !language || !className) {
+                                  if (inline || !language || !className) {
+                                    return (
+                                      <code
+                                        className={cn(
+                                          "px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80",
+                                          className,
+                                        )}
+                                      >
+                                        {children}
+                                      </code>
+                                    );
+                                  }
+
+                                  if (language === "mermaid") {
+                                    return (
+                                      <Mermaid
+                                        chart={codeText}
+                                        className="my-8"
+                                      />
+                                    );
+                                  }
+
                                   return (
-                                    <code
-                                      className={cn(
-                                        "px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80",
-                                        className,
-                                      )}
+                                    <CodeBlock
+                                      code={codeText}
+                                      language={
+                                        (language || "text") as BundledLanguage
+                                      }
+                                      className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
                                     >
-                                      {children}
-                                    </code>
+                                      <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
+                                        <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
+                                          <FileCode className="w-3 h-3" />
+                                          {language}
+                                        </CodeBlockTitle>
+                                        <CodeBlockActions>
+                                          <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary transition-all hover:bg-primary/5 rounded-lg" />
+                                        </CodeBlockActions>
+                                      </CodeBlockHeader>
+                                    </CodeBlock>
                                   );
-                                }
-
-                                if (language === "mermaid") {
-                                  return (
-                                    <Mermaid
-                                      chart={codeText}
-                                      className="my-8"
-                                    />
-                                  );
-                                }
-
-                                return (
-                                  <CodeBlock
-                                    code={codeText}
-                                    language={
-                                      (language || "text") as BundledLanguage
-                                    }
-                                    className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
-                                  >
-                                    <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
-                                      <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
-                                        <FileCode className="w-3 h-3" />
-                                        {language}
-                                      </CodeBlockTitle>
-                                      <CodeBlockActions>
-                                        <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary transition-all hover:bg-primary/5 rounded-lg" />
-                                      </CodeBlockActions>
-                                    </CodeBlockHeader>
-                                  </CodeBlock>
-                                );
-                              },
-                            }}
+                                },
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              } as any
+                            }
                           >
                             {section.content}
                           </Streamdown>
@@ -546,70 +550,73 @@ export default function CodebaseDetailsPage() {
                                   <div className="text-sm text-muted-foreground/70 leading-relaxed">
                                     <Streamdown
                                       plugins={streamdownPlugins}
-                                      components={{
-                                        code: ({
-                                          inline,
-                                          className,
-                                          children,
-                                        }: StreamdownCodeProps) => {
-                                          const match = /language-(\w+)/.exec(
-                                            className || "",
-                                          );
-                                          const language = match
-                                            ? match[1]
-                                            : null;
-                                          const codeText = String(
+                                      components={
+                                        {
+                                          code: ({
+                                            inline,
+                                            className,
                                             children,
-                                          ).replace(/\n$/, "");
+                                          }: StreamdownCodeProps) => {
+                                            const match = /language-(\w+)/.exec(
+                                              className || "",
+                                            );
+                                            const language = match
+                                              ? match[1]
+                                              : null;
+                                            const codeText = String(
+                                              children,
+                                            ).replace(/\n$/, "");
 
-                                          if (
-                                            inline ||
-                                            !language ||
-                                            !className
-                                          ) {
+                                            if (
+                                              inline ||
+                                              !language ||
+                                              !className
+                                            ) {
+                                              return (
+                                                <code
+                                                  className={cn(
+                                                    "px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80",
+                                                    className,
+                                                  )}
+                                                >
+                                                  {children}
+                                                </code>
+                                              );
+                                            }
+
+                                            if (language === "mermaid") {
+                                              return (
+                                                <Mermaid
+                                                  chart={codeText}
+                                                  className="my-8"
+                                                />
+                                              );
+                                            }
+
                                             return (
-                                              <code
-                                                className={cn(
-                                                  "px-1.5 py-0.5 rounded-md bg-muted font-mono text-sm font-medium text-foreground/90 transition-colors hover:bg-muted/80",
-                                                  className,
-                                                )}
+                                              <CodeBlock
+                                                code={codeText}
+                                                language={
+                                                  (language ||
+                                                    "text") as BundledLanguage
+                                                }
+                                                className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
                                               >
-                                                {children}
-                                              </code>
+                                                <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
+                                                  <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
+                                                    <FileCode className="w-3 h-3" />
+                                                    {language}
+                                                  </CodeBlockTitle>
+                                                  <CodeBlockActions>
+                                                    <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary transition-all hover:bg-primary/5 rounded-lg" />
+                                                  </CodeBlockActions>
+                                                </CodeBlockHeader>
+                                              </CodeBlock>
                                             );
-                                          }
-
-                                          if (language === "mermaid") {
-                                            return (
-                                              <Mermaid
-                                                chart={codeText}
-                                                className="my-8"
-                                              />
-                                            );
-                                          }
-
-                                          return (
-                                            <CodeBlock
-                                              code={codeText}
-                                              language={
-                                                (language ||
-                                                  "text") as BundledLanguage
-                                              }
-                                              className="my-8 border border-border/10 rounded-2xl overflow-hidden shadow-2xl shadow-primary/5"
-                                            >
-                                              <CodeBlockHeader className="bg-secondary/40 border-b border-border/10 px-4 py-2.5">
-                                                <CodeBlockTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
-                                                  <FileCode className="w-3 h-3" />
-                                                  {language}
-                                                </CodeBlockTitle>
-                                                <CodeBlockActions>
-                                                  <CodeBlockCopyButton className="size-7 text-muted-foreground/30 hover:text-primary transition-all hover:bg-primary/5 rounded-lg" />
-                                                </CodeBlockActions>
-                                              </CodeBlockHeader>
-                                            </CodeBlock>
-                                          );
-                                        },
-                                      }}
+                                          },
+                                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        } as any
+                                      }
                                     >
                                       {sub.content}
                                     </Streamdown>
