@@ -31,3 +31,6 @@ export const CHARS_PER_TOKEN_ESTIMATE = 1.3;
  * exceeding the model's context window per entry.
  */
 export const MAX_EMBEDDING_TEXT_LENGTH = 3000;
+
+export const CHAT_MODEL_ID = '@cf/meta/llama-3-8b-instruct';
+export const EMBEDDING_MODEL_ID = '@cf/baai/bge-m3';

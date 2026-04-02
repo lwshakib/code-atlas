@@ -8,7 +8,7 @@
 
 import { PineconeService } from "@/services/pinecone.services";
 import { getNeo4jDriver } from "./neo4j";
-import { generateEmbeddings } from "@/llm/embeddings";
+import { aiService } from "@/services/ai.services";
 
 /**
  * TOOL DEFINITIONS
@@ -114,7 +114,7 @@ export async function executeTool(
     );
 
     // Convert the natural language query into a vector embedding
-    const embedding = await generateEmbeddings(query, signal);
+    const embedding = await aiService.embedQuery(query);
 
     signal?.throwIfAborted();
 

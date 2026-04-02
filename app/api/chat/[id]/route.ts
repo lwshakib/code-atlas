@@ -10,9 +10,9 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { CHAT_ASSISTANT_SYSTEM_PROMPT } from "@/llm/prompts";
-import { streamTextFromGLM } from "@/llm/streamText";
-import { aiTools } from "@/lib/ai-tools";
+import { CHAT_ASSISTANT_SYSTEM_PROMPT } from "@/lib/prompts";
+import { aiService } from "@/services/ai.services";
+import { aiTools, executeTool } from "@/lib/ai-tools";
 
 /**
  * POST /api/chat/[id]
@@ -84,14 +84,15 @@ export async function POST(
      * This function manages the tool-calling loop (calling search_codebase, etc.)
      * and generates a ReadableStream.
      */
-    const stream = await streamTextFromGLM(
+    const stream = await aiService.streamText(
       [systemPrompt, ...messages],
       {
-        tools: aiTools, // Pass tools like search_codebase, get_file_content
+        tools: aiTools,
         codebaseId,
-      },
-      req.signal,
-    ); // Use request signal to allow aborting if the user closes the tab
+        executeTool,
+        abortSignal: req.signal,
+      }
+    );
 
     // 6. Response Splitting (Tee)
     // We split the stream: one goes to the user, the other is collected in the background to save the history

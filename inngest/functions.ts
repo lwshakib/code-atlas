@@ -8,11 +8,10 @@ import {
   INDEXING_BATCH_SIZE,
   MAX_EMBEDDING_TEXT_LENGTH,
 } from "@/lib/constants";
-import { generateBatchEmbeddings } from "@/llm/embeddings";
+import { aiService } from "@/services/ai.services";
 import { codebaseChannel } from "./channels";
-import { generateObjectFromGLM } from "@/llm/generateObject";
 import { z } from "zod";
-import { DOCS_GENERATION_SYSTEM_PROMPT } from "@/llm/prompts";
+import { DOCS_GENERATION_SYSTEM_PROMPT } from "@/lib/prompts";
 import { sendIndexingCompleteEmail } from "@/lib/email";
 
 export const indexCodebase = inngest.createFunction(
@@ -102,7 +101,7 @@ export const indexCodebase = inngest.createFunction(
           if (validFiles.length === 0) return;
 
           // B. Generate Embeddings in BATCH (Significant cost/performance improvement)
-          const embeddings = await generateBatchEmbeddings(
+          const embeddings = await aiService.embedDocuments(
             validFiles.map((f) => f.text),
           );
 
@@ -204,30 +203,35 @@ Generate a MASSIVELY detailed, multi-page developer wiki for this repository.
 
 Think step-by-step about the architecture, tech stack, and data flow before generating the content.`;
 
-        const result = await generateObjectFromGLM({
-          messages: [
+        const schema = z.object({
+          pages: z.array(
+            z.object({
+              title: z.string(),
+              content: z.string(),
+              subsections: z.array(
+                z.object({
+                  title: z.string(),
+                  content: z.string(),
+                }),
+              ),
+            }),
+          ),
+          questions: z.array(z.string()),
+        });
+
+        const result = await aiService.generateObject<{
+          pages: { title: string; content: string; subsections: { title: string; content: string; }[] }[];
+          questions: string[];
+        }>(
+          [
             {
               role: "system",
               content: DOCS_GENERATION_SYSTEM_PROMPT,
             },
             { role: "user", content: prompt },
           ],
-          outputSchema: z.object({
-            pages: z.array(
-              z.object({
-                title: z.string(),
-                content: z.string(),
-                subsections: z.array(
-                  z.object({
-                    title: z.string(),
-                    content: z.string(),
-                  }),
-                ),
-              }),
-            ),
-            questions: z.array(z.string()),
-          }),
-        });
+          schema
+        );
 
         // Save generated data to DB
         for (let i = 0; i < result.pages.length; i++) {
