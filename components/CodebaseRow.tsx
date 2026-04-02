@@ -143,12 +143,21 @@ export function CodebaseRow({
           <div className="w-8 h-8 rounded-xl bg-background border border-border/50 flex items-center justify-center shadow-sm shrink-0">
             <Github className="w-4 h-4 text-primary/70" />
           </div>
-          <Link
-            href={`/codebase/${codebase.id}`}
-            className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors cursor-pointer truncate"
-          >
-            {codebase.name}
-          </Link>
+          {currentStatus === "COMPLETED" ? (
+            <Link
+              href={`/codebase/${codebase.id}`}
+              className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors cursor-pointer truncate"
+            >
+              {codebase.name}
+            </Link>
+          ) : (
+            <span
+              className="font-bold text-sm tracking-tight text-muted-foreground opacity-80 cursor-default truncate"
+              title="Indexing not completed"
+            >
+              {codebase.name}
+            </span>
+          )}
         </div>
       </TableCell>
       <TableCell className="py-4 align-middle">
