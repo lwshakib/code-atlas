@@ -3,7 +3,7 @@ import { inngest } from "./client";
 import { Octokit } from "octokit";
 import prisma from "@/lib/prisma";
 import { getNeo4jDriver } from "@/lib/neo4j";
-import { getPineconeIndex } from "@/lib/pinecone";
+import { PineconeService } from "@/services/pinecone.services";
 import {
   INDEXING_BATCH_SIZE,
   MAX_EMBEDDING_TEXT_LENGTH,
@@ -69,7 +69,7 @@ export const indexCodebase = inngest.createFunction(
 
         await step.run(`process-batch-${i / BATCH_SIZE}`, async () => {
           const driver = getNeo4jDriver();
-          const pineconeIndex = getPineconeIndex();
+          const pineconeIndex = PineconeService.getInstance().getIndex();
 
           // A. Fetch all file contents in parallel within the batch
           const fileContents = await Promise.all(

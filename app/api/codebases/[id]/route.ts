@@ -11,7 +11,7 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getNeo4jDriver } from "@/lib/neo4j";
-import { getPineconeIndex } from "@/lib/pinecone";
+import { PineconeService } from "@/services/pinecone.services";
 
 /**
  * PATCH /api/codebases/[id]
@@ -102,7 +102,7 @@ export async function DELETE(
 
     // 1. Delete vector embeddings from Pinecone (Vector DB)
     try {
-      const pineconeIndex = getPineconeIndex();
+      const pineconeIndex = PineconeService.getInstance().getIndex();
       await pineconeIndex.deleteMany({
         filter: { codebaseId: { $eq: id } }, // Filter by the specific codebase ID
       });

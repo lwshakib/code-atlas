@@ -6,7 +6,7 @@
  * and graph queries (Neo4j).
  */
 
-import { getPineconeIndex } from "./pinecone";
+import { PineconeService } from "@/services/pinecone.services";
 import { getNeo4jDriver } from "./neo4j";
 import { generateEmbeddings } from "@/llm/embeddings";
 
@@ -119,7 +119,7 @@ export async function executeTool(
     signal?.throwIfAborted();
 
     // Connect to Pinecone and query the specific codebase's items
-    const index = getPineconeIndex();
+    const index = PineconeService.getInstance().getIndex();
     const result = await index.query({
       vector: embedding,
       topK: 5, // Return top 5 most relevant results
