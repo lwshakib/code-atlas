@@ -78,7 +78,11 @@ export async function fetchAndFormatFile(
       path: file.path,
       text: `File: ${file.path}\n\nCode:\n${content.substring(0, MAX_EMBEDDING_TEXT_LENGTH)}`,
     };
-  } catch (err) {
+  } catch (err: any) {
+    // CRITICAL: Propagate 429 errors so Inngest can retry with backoff.
+    if (err?.status === 429 || err?.message?.includes("429")) {
+      throw err;
+    }
     console.error(`Error fetching file ${file.path}:`, err);
     return null;
   }
@@ -203,29 +207,37 @@ export async function processEmbeddingSubBatch(
   const session = driver.session();
 
   try {
-    for (let j = 0; j < files.length; j++) {
-      const { file, content } = files[j];
-      const embedding = embeddings[j];
-      const summary =
-        summaries.find((s) => s.path === file.path)?.summary || "";
-
+    const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
+    
+    // Optimized Neo4j Sync: Use UNWIND for bulk updates in a single transaction
+    const neo4jData = files.map((f, idx) => {
+      const embedding = embeddings[idx];
+      const summary = summaries.find((s) => s.path === f.file.path)?.summary || "";
+      
+      // Populate Pinecone records for the vector DB
       pineconeRecords.push(
-        createPineconeRecord(codebaseId, file.path, content, embedding),
+        createPineconeRecord(codebaseId, f.file.path, f.content, embedding),
       );
 
-      // Sync to Neo4j
-      await session.executeWrite((tx) =>
-        tx.run(
-          `
-          MERGE (c:Codebase {id: $codebaseId})
-          MERGE (f:File {path: $path, codebaseId: $codebaseId})
-          SET f.content = $content, f.summary = $summary
-          MERGE (f)-[:BELONGS_TO]->(c)
-          `,
-          { codebaseId, path: file.path, content, summary },
-        ),
-      );
-    }
+      return {
+        path: f.file.path,
+        content: f.content,
+        summary: summary,
+      };
+    });
+
+    await session.executeWrite((tx) =>
+      tx.run(
+        `
+        UNWIND $batch as item
+        MERGE (c:Codebase {id: $codebaseId})
+        MERGE (f:File {path: item.path, codebaseId: $codebaseId})
+        SET f.content = item.content, f.summary = item.summary
+        MERGE (f)-[:BELONGS_TO]->(c)
+        `,
+        { codebaseId, batch: neo4jData },
+      ),
+    );
 
     // Sync to Pinecone
     if (pineconeRecords.length > 0) {
@@ -246,6 +258,7 @@ export async function generateRepositoryDocs(
   repoFullName: string,
   codebaseId: string,
   treeData: RepoTreeItem[],
+  fileCount: number,
 ) {
   // 1. Collect key context
   const importantFileNames = [
@@ -281,7 +294,12 @@ export async function generateRepositoryDocs(
   const session = driver.session();
   const summaryResults = await session.executeRead((tx) =>
     tx.run(
-      `MATCH (f:File {codebaseId: $codebaseId}) RETURN f.path as path, f.summary as summary`,
+      `
+      MATCH (f:File {codebaseId: $codebaseId}) 
+      RETURN f.path as path, f.summary as summary
+      ORDER BY size(f.path) ASC
+      LIMIT 500
+      `,
       { codebaseId },
     ),
   );
@@ -295,6 +313,7 @@ export async function generateRepositoryDocs(
     repoFullName,
     atlasContext,
     contextFiles,
+    fileCount,
   );
 
   // Use a manually defined Gemini schema for maximum reliability with nested structures
@@ -362,37 +381,29 @@ export async function generateRepositoryDocs(
     questions: string[];
   }>(messages, manualSchema);
 
-  // 3. Save to DB
+  // 3. Save to DB using a single atomic transaction (Nested Create)
   const pages = result.pages || [];
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i];
-
-    // Fallbacks in case the LLM omits required fields
-    const pageTitle = page.title || `Documentation Page ${i + 1}`;
-    const pageContent =
-      page.content || "Content generation failed or was omitted by AI.";
-
-    const createdPage = await prisma.docPage.create({
+  if (pages.length > 0) {
+    await prisma.codebase.update({
+      where: { id: codebaseId },
       data: {
-        title: pageTitle,
-        content: pageContent,
-        order: i,
-        codebaseId,
+        docPages: {
+          create: pages.map((page, i) => ({
+            title: page.title || `Page ${i + 1}`,
+            content: page.content || "",
+            order: i,
+            children: {
+              create: (page.subsections || []).map((sub, subIdx) => ({
+                title: sub.title || `Subsection ${subIdx + 1}`,
+                content: sub.content || "",
+                order: subIdx,
+                codebaseId, // Redundant but enforced by schema
+              })),
+            },
+          })),
+        },
       },
     });
-
-    const subsections = page.subsections || [];
-    if (subsections.length > 0) {
-      await prisma.docPage.createMany({
-        data: subsections.map((sub, subIdx) => ({
-          title: sub.title || `Subsection ${subIdx + 1}`,
-          content: sub.content || "",
-          order: subIdx,
-          codebaseId,
-          parentId: createdPage.id,
-        })),
-      });
-    }
   }
 
   const questions = result.questions || [];

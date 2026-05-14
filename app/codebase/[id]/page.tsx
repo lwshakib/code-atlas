@@ -38,8 +38,7 @@ import {
 import { LogoWithText } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 
-import { authClient } from "@/lib/auth-client";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserMenu } from "@/components/UserMenu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,7 +102,6 @@ const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
   const router = useRouter();
-  const { data: session } = authClient.useSession();
   // 1. PAGE STATE
   const [scrolled, setScrolled] = React.useState(false); // Navigation aesthetic
   const params = useParams();
@@ -134,17 +132,6 @@ export default function CodebaseDetailsPage() {
     api: `/api/chat/${codebaseId}`, // The unique streaming endpoint for this specific codebase
     initialMessages: [],
   });
-
-  const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.push("/");
-          router.refresh();
-        },
-      },
-    });
-  };
 
   /**
    * DATA FETCHING EFFECT
@@ -396,47 +383,7 @@ export default function CodebaseDetailsPage() {
               <MessageSquare className="w-4 h-4 mr-2" />
               <span className="text-xs font-bold">Chat</span>
             </Button>
-            {session?.user && (
-              <div className="size-9 rounded-full overflow-hidden border border-border/50 bg-secondary/10 flex-shrink-0">
-                <Avatar className="h-full w-full">
-                  <AvatarImage
-                    src={session.user.image || ""}
-                    alt={session.user.name || "User"}
-                  />
-                  <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
-                    {session.user.name?.[0]?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent size="sm">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Log Out</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to log out?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleSignOut}
-                    variant="destructive"
-                  >
-                    Log Out
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <UserMenu />
           </div>
         </div>
       </nav>

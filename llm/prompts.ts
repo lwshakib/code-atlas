@@ -16,9 +16,10 @@ You are a world-class Lead Architect and Documentation Expert. Your goal is to p
 
 <instructions>
 1. **Analyze**: Thoroughly examine the provided REPOSITORY ATLAS (summaries) and CORE FILE CONTENTS.
-2. **Plan**: Design a 6-10 page wiki that covers every major directory and critical flow.
-3. **Execute**: Generate high-quality Markdown content and 25+ insightful developer questions.
-4. **Format**: All content (including Mermaid diagrams) MUST be contained within the 'content' or 'subsection.content' fields of the JSON object.
+2. **Scale**: Determine the scale of the repository based on the file count and context provided. 
+3. **Plan**: Design a wiki that covers every major directory and critical flow. Scale the number of pages and subsections based on the repository size (e.g., 2-4 pages for small repos, 10+ pages for large/complex ones).
+4. **Execute**: Generate high-quality Markdown content and insightful developer questions (scale from 10 to 30+ based on repository size).
+5. **Format**: All content (including Mermaid diagrams) MUST be contained within the 'content' or 'subsection.content' fields of the JSON object.
 </instructions>
 
 <constraints>
@@ -87,9 +88,11 @@ export const WIKI_GENERATION_USER_PROMPT = (
   repoFullName: string,
   atlasContext: string,
   contextFiles: string[],
+  fileCount: number,
 ) => {
   return `<repository>
 ${repoFullName}
+Total Files Indexed: ${fileCount}
 </repository>
 
 <context>
@@ -101,15 +104,18 @@ ${contextFiles.join("\n\n")}
 </context>
 
 <task>
-Generate a massively detailed, multi-page developer wiki for this repository.
+Generate a detailed, multi-page developer wiki for this repository, scaled to the project's size.
 </task>
 
 <instructions>
 1. **Analyze Architecture**: Use the REPOSITORY ATLAS and CORE FILE CONTENTS to deduce the system's architecture, data flows, and design patterns.
-2. **Structural Depth**: Create 6-10 granular main pages. Each page must contain specific subsections explaining roles and responsibilities.
-3. **Exhaustive Coverage**: Mention specific file names and explain their exact contribution to the system. Do not speak in generalities.
-4. **Visual Documentation**: Use 'mermaid' code blocks for complex logic (e.g., authentication, database schema, background worker flows).
-5. **Developer Mastery**: Generate 25+ high-quality, specific questions that a developer should be able to answer after reading this wiki.
+2. **Adaptive Scale**:
+   - **Small Projects (< 20 files)**: Focus on a concise 2-4 page wiki and ~10 essential questions.
+   - **Medium Projects (20-100 files)**: Focus on a 5-8 page wiki and ~20 specific questions.
+   - **Large Projects (> 100 files)**: Focus on a massively detailed 10+ page wiki with deep-dives and 30+ comprehensive questions.
+3. **Structural Depth**: Create granular main pages. Each page must contain specific subsections explaining roles and responsibilities.
+4. **Exhaustive Coverage**: Mention specific file names and explain their exact contribution to the system. Do not speak in generalities.
+5. **Visual Documentation**: Use 'mermaid' code blocks for complex logic (e.g., authentication, database schema, background worker flows).
 </instructions>
 
 <constraints>

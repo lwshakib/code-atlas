@@ -57,19 +57,36 @@ export const aiTools = [
   {
     type: "function",
     function: {
-      name: "list_files",
+      name: "browse_codebase",
       description:
-        "List all files and directory structure in the codebase. Use this to understand the project layout, routing structure (e.g., app directory), or to find specific configuration files.",
+        "List all files and their AI-generated summaries in a directory. Use this to understand the project layout and the purpose of each file without reading full code.",
       parameters: {
         type: "object",
         properties: {
-          // Optional sub-directory to narrow the search
           directory: {
             type: "string",
             description:
-              "Optional directory to list (e.g., 'app'). If omitted, lists the top-level structure.",
+              "The directory to browse (e.g., 'app' or 'lib'). If empty, browses the root.",
           },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_atlas",
+      description:
+        "Search through the high-level file summaries in the Codebase Atlas. Best for understanding architecture, finding modules by purpose, or high-level research.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The architectural or functional query (e.g., 'authentication logic' or 'database models').",
+          },
+        },
+        required: ["query"],
       },
     },
   },
@@ -106,37 +123,46 @@ export async function executeTool(
   codebaseId: string,
   signal?: AbortSignal,
 ) {
-  // TOOL 1: SEARCH CODEBASE (Vector Search)
+  // TOOL 1: SEARCH CODEBASE (Vector Search + Atlas Context)
   if (name === "search_codebase") {
     const query = args.query as string;
-    console.log(
-      `[Tool: search_codebase] Query: "${query}" | Codebase: ${codebaseId}`,
-    );
-
-    // Convert the natural language query into a vector embedding
     const embedding = await embedQuery(query);
-
     signal?.throwIfAborted();
 
-    // Connect to Pinecone and query the specific codebase's items
     const index = getPineconeIndex();
     const result = await index.query({
       vector: embedding,
-      topK: 5, // Return top 5 most relevant results
-      filter: { codebaseId: { $eq: codebaseId } }, // Ensure we only see results from THIS repo
+      topK: 5,
+      filter: { codebaseId: { $eq: codebaseId } },
       includeMetadata: true,
     });
 
-    console.log(
-      `[Tool: search_codebase] Found ${result.matches.length} matches in Pinecone`,
-    );
+    const driver = getNeo4jDriver();
+    const session = driver.session();
 
-    // Return a cleaned-up object for the LLM to digest
-    return result.matches.map((m) => ({
-      path: m.metadata?.path,
-      snippet: m.metadata?.contentSnippet,
-      score: m.score,
-    }));
+    try {
+      const enhancedResults = await Promise.all(
+        result.matches.map(async (m) => {
+          const path = m.metadata?.path as string;
+          // Enrich Pinecone results with Neo4j summaries
+          const neo4jResult = await session.executeRead((tx) =>
+            tx.run(
+              `MATCH (f:File {path: $path, codebaseId: $codebaseId}) RETURN f.summary as summary`,
+              { path, codebaseId },
+            ),
+          );
+          return {
+            path,
+            summary: neo4jResult.records[0]?.get("summary") || "No summary available.",
+            snippet: m.metadata?.contentSnippet,
+            score: m.score,
+          };
+        }),
+      );
+      return enhancedResults;
+    } finally {
+      await session.close();
+    }
   }
 
   // TOOL 2: GET FILE CONTENT (Direct Graph Lookup)
@@ -178,25 +204,22 @@ export async function executeTool(
     }
   }
 
-  // TOOL 3: LIST FILES (Prefix Search)
-  if (name === "list_files") {
+  // TOOL 3: BROWSE CODEBASE (Atlas-Aware Directory Listing)
+  if (name === "browse_codebase") {
     const { directory = "" } = args;
-    console.log(
-      `[Tool: list_files] Dir: "${directory}" | Codebase: ${codebaseId}`,
-    );
-
     signal?.throwIfAborted();
     const driver = getNeo4jDriver();
     const session = driver.session();
 
     try {
-      // Uses Neo4j to find all File nodes whose path starts with the given prefix
       const result = await session.executeRead((tx) =>
         tx.run(
           `
           MATCH (f:File {codebaseId: $codebaseId})
           WHERE f.path STARTS WITH $prefix
-          RETURN f.path as path LIMIT 200
+          RETURN f.path as path, f.summary as summary
+          ORDER BY f.path ASC
+          LIMIT 100
           `,
           {
             codebaseId,
@@ -209,14 +232,47 @@ export async function executeTool(
         ),
       );
 
-      const paths = result.records.map((r) => r.get("path"));
-      return { paths, count: paths.length };
+      return result.records.map((r) => ({
+        path: r.get("path"),
+        summary: r.get("summary"),
+      }));
     } finally {
       await session.close();
     }
   }
 
-  // TOOL 4: QUERY GRAPH RELATIONS (Advanced Architecture Lookup)
+  // TOOL 4: SEARCH ATLAS (Semantic Search on Summaries)
+  if (name === "search_atlas") {
+    const query = args.query as string;
+    signal?.throwIfAborted();
+    const driver = getNeo4jDriver();
+    const session = driver.session();
+
+    try {
+      // We use Neo4j's full-text search capability or a simple keyword match for summaries
+      // For now, we'll use a semantic-like keyword match on summaries
+      const result = await session.executeRead((tx) =>
+        tx.run(
+          `
+          MATCH (f:File {codebaseId: $codebaseId})
+          WHERE f.summary CONTAINS $query OR f.path CONTAINS $query
+          RETURN f.path as path, f.summary as summary
+          LIMIT 10
+          `,
+          { codebaseId, query },
+        ),
+      );
+
+      return result.records.map((r) => ({
+        path: r.get("path"),
+        summary: r.get("summary"),
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  // TOOL 5: QUERY GRAPH RELATIONS (Advanced Architecture Lookup)
   if (name === "query_graph_relations") {
     const cypher = args.cypher as string;
     console.log(

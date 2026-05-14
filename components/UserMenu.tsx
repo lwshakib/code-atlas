@@ -87,35 +87,9 @@ export function UserMenu() {
 
         <DropdownMenuSeparator className="bg-border/50" />
 
-        {/* Navigation Section */}
-        <DropdownMenuItem
-          onClick={() => router.push("/codebase")}
-          className="cursor-pointer rounded-md focus:bg-secondary/80 py-2.5"
-        >
-          <Code2 className="mr-2 h-4 w-4 opacity-70" />
-          <span className="text-sm font-medium">Codebases</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-secondary/80 py-2.5">
-          <User className="mr-2 h-4 w-4 opacity-70" />
-          <span className="text-sm font-medium">Account Settings</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-secondary/80 py-2.5">
-          <Bell className="mr-2 h-4 w-4 opacity-70" />
-          <span className="text-sm font-medium">Notifications</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-secondary/80 py-2.5">
-          <CreditCard className="mr-2 h-4 w-4 opacity-70" />
-          <span className="text-sm font-medium">Billing</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator className="bg-border/50" />
-
         {/* Danger Zone: Log Out */}
         <DropdownMenuItem
-          className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md py-2.5"
+          className="cursor-pointer rounded-md focus:bg-secondary/80 py-2.5"
           onClick={handleSignOut}
         >
           <LogOut className="mr-2 h-4 w-4 opacity-70" />
