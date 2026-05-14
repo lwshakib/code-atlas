@@ -184,6 +184,7 @@ export default function CodebasePage() {
    */
   React.useEffect(() => {
     if (session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchUserCodebases();
 
       // Auto-start indexing if a repo was selected on the landing page
@@ -234,6 +235,7 @@ export default function CodebasePage() {
    */
   React.useEffect(() => {
     if (dialogView === "import" && session && repositories.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRepos();
     }
   }, [dialogView, session, repositories.length]);

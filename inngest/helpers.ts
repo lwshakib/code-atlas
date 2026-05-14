@@ -1,9 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Octokit } from "octokit";
-import {
-  MAX_EMBEDDING_TEXT_LENGTH,
-  CHARS_PER_TOKEN_ESTIMATE,
-  MAX_TOKENS_PER_BATCH,
-} from "@/lib/constants";
+import { MAX_EMBEDDING_TEXT_LENGTH } from "@/lib/constants";
 import { PineconeRecord, RecordMetadata } from "@pinecone-database/pinecone";
 import { embedDocument, generateObject } from "@/llm";
 import { z } from "zod";
@@ -16,7 +13,7 @@ import {
   WIKI_GENERATION_USER_PROMPT,
   BATCH_SUMMARIZATION_USER_PROMPT,
 } from "@/llm/prompts";
-import { sendIndexingCompleteEmail } from "@/lib/email";
+// import { sendIndexingCompleteEmail } from "@/lib/email";
 
 /**
  * Checks if a file path is relevant for indexing.
@@ -203,17 +200,18 @@ export async function processEmbeddingSubBatch(
     files.map((f) => embedDocument(f.text, f.file.path || "none")),
   );
 
-  const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
+  // const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
   const session = driver.session();
 
   try {
     const pineconeRecords: PineconeRecord<RecordMetadata>[] = [];
-    
+
     // Optimized Neo4j Sync: Use UNWIND for bulk updates in a single transaction
     const neo4jData = files.map((f, idx) => {
       const embedding = embeddings[idx];
-      const summary = summaries.find((s) => s.path === f.file.path)?.summary || "";
-      
+      const summary =
+        summaries.find((s) => s.path === f.file.path)?.summary || "";
+
       // Populate Pinecone records for the vector DB
       pineconeRecords.push(
         createPineconeRecord(codebaseId, f.file.path, f.content, embedding),

@@ -78,6 +78,7 @@ export function CodebaseRow({
    */
   React.useEffect(() => {
     if (latestData?.data?.status) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentStatus(latestData.data.status);
       onStatusChange?.(codebase.id, latestData.data.status); // Inform parent about the update
     }

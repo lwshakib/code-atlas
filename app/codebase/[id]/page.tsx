@@ -19,7 +19,6 @@ import {
   Trash2,
   Copy,
   Check,
-  LogOut,
 } from "lucide-react";
 import { Streamdown } from "streamdown"; // Powerful markdown streamer with plugin support
 import { cjk } from "@streamdown/cjk";
@@ -50,7 +49,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -101,7 +100,6 @@ interface StreamdownCodeProps {
 const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
-  const router = useRouter();
   // 1. PAGE STATE
   const [scrolled, setScrolled] = React.useState(false); // Navigation aesthetic
   const params = useParams();
@@ -173,6 +171,7 @@ export default function CodebaseDetailsPage() {
       const shuffled = [...allQuestions]
         .sort(() => 0.5 - Math.random())
         .slice(0, 3);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShuffledQuestions(shuffled);
     }
   }, [showChat, codebase]);
@@ -398,6 +397,7 @@ export default function CodebaseDetailsPage() {
           <button
             key={tab.id}
             onClick={() => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               setActiveTab(tab.id as any);
               if (tab.id === "chat") setShowChat(true);
             }}

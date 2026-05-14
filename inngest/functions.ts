@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { inngest } from "./client";
 import { Octokit } from "octokit";
 import {
@@ -62,12 +63,12 @@ export const indexCodebase = inngest.createFunction(
             `summarize-batch-${i / BATCH_SIZE}`,
             async () => {
               const innerOctokit = new Octokit({ auth: accessToken });
-              
+
               // NEW: Concurrency-limited fetching to avoid memory pressure (OOM)
               // Instead of fetching all 50 files in parallel, we fetch them in groups of 10.
               const FETCH_CONCURRENCY = 10;
               const fileContents: any[] = [];
-              
+
               for (let j = 0; j < batch.length; j += FETCH_CONCURRENCY) {
                 const subBatch = batch.slice(j, j + FETCH_CONCURRENCY);
                 const subBatchResults = await Promise.all(

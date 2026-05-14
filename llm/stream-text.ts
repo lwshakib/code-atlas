@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { client } from "./client";
 import { CHAT_MODEL_ID } from "./constants";
 

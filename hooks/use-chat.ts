@@ -141,7 +141,14 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
             const jsonStr = trimmedLine.slice(6);
 
             try {
-              const data = JSON.parse(jsonStr);
+              const data = JSON.parse(jsonStr) as {
+                type: "text" | "tool";
+                content?: string;
+                id?: string;
+                tool?: string;
+                status?: "calling" | "success" | "error";
+                result?: unknown;
+              };
 
               // Branch 1: Incremental Text Updates
               if (data.type === "text") {
@@ -157,7 +164,7 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
                 });
               }
               // Branch 2: Tool Invocation Updates
-              else if (data.type === "tool") {
+              else if (data.type === "tool" && data.id && data.status) {
                 setMessages((prev) => {
                   const updated = prev.map((msg) => {
                     if (msg.id !== assistantMessageId) return msg;
@@ -169,15 +176,15 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
                       // Update existing tool (e.g. from 'calling' to 'success')
                       tools[existingIdx] = {
                         ...tools[existingIdx],
-                        status: data.status,
+                        status: data.status!,
                         result: data.result,
                       };
-                    } else {
+                    } else if (data.tool) {
                       // Inject a brand new tool call
                       tools.push({
-                        id: data.id,
-                        tool: data.tool,
-                        status: data.status,
+                        id: data.id!,
+                        tool: data.tool!,
+                        status: data.status!,
                         result: data.result,
                       });
                     }

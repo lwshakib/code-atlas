@@ -83,7 +83,8 @@ export const aiTools = [
         properties: {
           query: {
             type: "string",
-            description: "The architectural or functional query (e.g., 'authentication logic' or 'database models').",
+            description:
+              "The architectural or functional query (e.g., 'authentication logic' or 'database models').",
           },
         },
         required: ["query"],
@@ -153,7 +154,8 @@ export async function executeTool(
           );
           return {
             path,
-            summary: neo4jResult.records[0]?.get("summary") || "No summary available.",
+            summary:
+              neo4jResult.records[0]?.get("summary") || "No summary available.",
             snippet: m.metadata?.contentSnippet,
             score: m.score,
           };

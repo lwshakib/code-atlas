@@ -23,6 +23,7 @@ export async function generateText(
 
   const chat = client.chats.create({
     model: CHAT_MODEL_ID,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     history: history as any[],
     config: {
       systemInstruction,

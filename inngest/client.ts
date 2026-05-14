@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Inngest } from "inngest";
 import { realtimeMiddleware } from "@inngest/realtime/middleware";
 

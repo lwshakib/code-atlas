@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { client } from "./client";
 import { CHAT_MODEL_ID } from "./constants";
