@@ -130,14 +130,18 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions) {
           const chunk = decoder.decode(value, { stream: true });
           buffer += chunk;
 
-          // Split by newline as our API emits one JSON object per line (NDJSON)
+          // Split by standard newline
           const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Retain the last possibly incomplete line in the buffer
+          buffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (!line.trim()) continue;
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith("data: ")) continue;
+
+            const jsonStr = trimmedLine.slice(6);
+
             try {
-              const data = JSON.parse(line);
+              const data = JSON.parse(jsonStr);
 
               // Branch 1: Incremental Text Updates
               if (data.type === "text") {

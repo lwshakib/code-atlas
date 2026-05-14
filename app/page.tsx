@@ -179,11 +179,11 @@ export default function LandingPage() {
 
   // 3. Repository Exploration Input State
   const [repoUrl, setRepoUrl] = React.useState("");
-  const [isExploring] = React.useState(false);
+  const [isExploring, setIsExploring] = React.useState(false);
 
   /**
    * EXPLORE HANDLER
-   * Validates a GitHub URL and redirects to the dashboard to begin indexing.
+   * Validates a GitHub URL, checks if it's available, and redirects to the dashboard.
    */
   const handleExplore = async () => {
     if (!repoUrl.trim()) {
@@ -200,11 +200,47 @@ export default function LandingPage() {
       return;
     }
 
-    const repoFullName = match[1];
+    const repoFullName = match[1].replace(".git", ""); // Clean up any .git suffix
 
-    // Store the desired repository in localStorage so the dashboard can pick it up after login/redirect
-    localStorage.setItem("pending_repo_url", repoFullName);
-    router.push("/codebase");
+    try {
+      setIsExploring(true);
+
+      // Verify repository exists and is public
+      const res = await fetch(`https://api.github.com/repos/${repoFullName}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast.error(
+            "Repository not found. Please ensure it is a public repository.",
+          );
+        } else {
+          toast.error(`GitHub API Error: ${res.statusText}`);
+        }
+        return;
+      }
+
+      const repoData = await res.json();
+
+      // Store the desired repository in localStorage
+      localStorage.setItem("pending_repo_url", repoData.full_name);
+
+      if (!session) {
+        // If not authenticated, trigger login which will redirect to /codebase
+        await authClient.signIn.social({
+          provider: "github",
+          callbackURL: "/codebase",
+        });
+      } else {
+        // If already authenticated, jump straight to the dashboard
+        router.push("/codebase");
+      }
+    } catch (error) {
+      console.error("Explore error:", error);
+      toast.error(
+        "Failed to verify repository. Please check your internet connection.",
+      );
+    } finally {
+      setIsExploring(false);
+    }
   };
 
   /**

@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { inngest } from "@/inngest/client";
 import { getNeo4jDriver } from "@/lib/neo4j";
-import { PineconeService } from "@/services/pinecone.services";
+import { getPineconeIndex } from "@/lib/pinecone";
 import { getSubscriptionToken } from "@inngest/realtime";
 
 export async function cancelAndCleanupIndexingAction(codebaseId: string) {
@@ -41,7 +41,7 @@ export async function cancelAndCleanupIndexingAction(codebaseId: string) {
 
     // Delete vector embeddings from Pinecone
     try {
-      const pineconeIndex = PineconeService.getInstance().getIndex();
+      const pineconeIndex = getPineconeIndex();
       await pineconeIndex.deleteMany({
         filter: { codebaseId: { $eq: codebaseId } },
       });

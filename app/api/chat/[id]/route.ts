@@ -10,8 +10,8 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { CHAT_ASSISTANT_SYSTEM_PROMPT } from "@/lib/prompts";
-import { aiService } from "@/services/ai.services";
+import { CHAT_ASSISTANT_SYSTEM_PROMPT } from "@/llm/prompts";
+import { streamText } from "@/llm";
 import { aiTools, executeTool } from "@/lib/ai-tools";
 
 /**
@@ -84,15 +84,12 @@ export async function POST(
      * This function manages the tool-calling loop (calling search_codebase, etc.)
      * and generates a ReadableStream.
      */
-    const stream = await aiService.streamText(
-      [systemPrompt, ...messages],
-      {
-        tools: aiTools,
-        codebaseId,
-        executeTool,
-        abortSignal: req.signal,
-      }
-    );
+    const stream = await streamText([systemPrompt, ...messages], {
+      tools: aiTools,
+      codebaseId,
+      executeTool,
+      abortSignal: req.signal,
+    });
 
     // 6. Response Splitting (Tee)
     // We split the stream: one goes to the user, the other is collected in the background to save the history
@@ -116,6 +113,7 @@ export async function POST(
       }
 
       let fullContent = "";
+      let buffer = "";
       const toolCaptures: ToolCapture[] = [];
       let lastSavedLength = 0;
       let lastSavedToolCount = 0;
@@ -152,14 +150,16 @@ export async function POST(
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (!line.trim()) continue;
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith("data: ")) continue;
+
             try {
-              // Parse each JSON chunk emitted by streamTextFromGLM
-              const data = JSON.parse(line);
+              const data = JSON.parse(trimmedLine.slice(6));
               if (data.type === "text") {
                 fullContent += data.content; // Accumulate plain text
               } else if (data.type === "tool" && data.status === "success") {
@@ -191,9 +191,13 @@ export async function POST(
     })();
 
     // 7. Return the stream to the client (Frontend)
+    // We use text/event-stream and disable buffering to ensure real-time delivery
     return new Response(streamToReturn, {
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no", // Tells proxies like Nginx/Vercel not to buffer
       },
     });
   } catch (error) {

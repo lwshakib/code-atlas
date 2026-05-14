@@ -6,9 +6,9 @@
  * and graph queries (Neo4j).
  */
 
-import { PineconeService } from "@/services/pinecone.services";
+import { getPineconeIndex } from "./pinecone";
 import { getNeo4jDriver } from "./neo4j";
-import { aiService } from "@/services/ai.services";
+import { embedQuery } from "@/llm";
 
 /**
  * TOOL DEFINITIONS
@@ -114,12 +114,12 @@ export async function executeTool(
     );
 
     // Convert the natural language query into a vector embedding
-    const embedding = await aiService.embedQuery(query);
+    const embedding = await embedQuery(query);
 
     signal?.throwIfAborted();
 
     // Connect to Pinecone and query the specific codebase's items
-    const index = PineconeService.getInstance().getIndex();
+    const index = getPineconeIndex();
     const result = await index.query({
       vector: embedding,
       topK: 5, // Return top 5 most relevant results

@@ -1,99 +1,91 @@
 # Contributing to Code Atlas
 
-First off, thank you for considering contributing to Code Atlas! It's people like you that make Code Atlas such a great tool.
+Thank you for your interest in contributing to Code Atlas! This guide will help you get started with our development process.
 
-## 🌈 How Can I Contribute?
+## 🚀 Getting Started
 
-### Reporting Bugs
+### 1. Fork and Clone
 
-- Before creating a new issue, please search existing issues to see if it has already been reported.
-- Use a clear and descriptive title.
-- Describe the exact steps which reproduce the problem in as many details as possible.
-- Explain which behavior you expected to see and why.
+1.  Fork the repository on GitHub.
+2.  Clone your fork locally:
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/code-atlas.git
+    cd code-atlas
+    ```
+3.  Add the upstream remote:
+    ```bash
+    git remote add upstream https://github.com/lwshakib/code-atlas.git
+    ```
 
-### Suggesting Enhancements
+### 2. Local Setup
 
-- Check the current [README](README.md) to understand the project's goals.
-- Use a clear and descriptive title for the issue.
-- Provide a step-by-step description of the suggested enhancement.
-
-### Pull Requests
-
-- Fill in the pull request template.
-- Do not include issue numbers in the PR title.
-- Include screenshots and animated GIFs in your pull request whenever possible.
-- Ensure that the PR passes all CI checks.
-
----
-
-## 💻 Local Development Setup
-
-Code Atlas relies on a specific set of databases and background workers. Follow these steps to get a functional environment:
-
-### 0. Clone the Repository
+We use **PNPM** as our package manager. Please ensure you have it installed.
 
 ```bash
-git clone https://github.com/lwshakib/code-atlas.git
-cd code-atlas
-```
+# Install dependencies
+pnpm install
 
-### 1. Environment Variables
+# Setup environment
+cp .env.example .env
+# Update .env with your local/dev credentials
 
-You MUST have a valid `.env` file. See `.env.example` for the required keys.
-Specifically, ensure you have:
-
-- `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
-- `PINECONE_API_KEY`, `PINECONE_INDEX`
-- `DATABASE_URL` (PostgreSQL)
-- `INNGEST_SIGNING_KEY` (for production/preview) or run `npx inngest-cli@latest dev` locally.
-
-### 2. Databases via Docker
-
-The easiest way to run the required infra is via the provided `docker-compose.yml`:
-
-```bash
+# Start infra
 docker-compose up -d
+
+# Generate Prisma client
+pnpm run db:generate
 ```
 
-This starts:
+## 🛠️ Development Workflow
 
-- **PostgreSQL**: For core application data.
-- **Neo4j**: For graph-native code mapping.
+### 1. Branching
 
-### 3. Inngest Dev Server
-
-Code Atlas uses Inngest for background indexing. You must run the Inngest Dev Server locally to capture and execute functions:
+Always create a new branch for your work:
 
 ```bash
-npx inngest-cli@latest dev
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-bug-fix
 ```
 
-### 4. Running the App
+### 2. Code Quality
+
+Before submitting a pull request, ensure your code passes all checks:
 
 ```bash
-bun dev
+# Run type checking
+pnpm run typecheck
+
+# Run linting
+pnpm run lint
+
+# Check formatting
+pnpm run format:check
+
+# Run build
+pnpm run build
 ```
 
----
+### 3. Pull Requests
 
-## 🏗️ Architecture Overview
+1.  Push your branch to your fork:
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+2.  Open a Pull Request against the `main` branch of the upstream repository.
+3.  Fill out the PR template completely.
+4.  Ensure all CI checks pass.
 
-When contributing to different parts of the system, keep these patterns in mind:
+## 🏗️ Architecture Best Practices
 
-- **Graph Structure**: Neo4j nodes should follow the `:File`, `:Module`, `:Function` labels with appropriate `DEPENDS_ON` or `CALLS` relationships.
-- **Semantic Search**: Every file indexed in Neo4j must have a corresponding vector in Pinecone for semantic search to stay in sync.
-- **Real-time Updates**: Use Inngest Realtime events to push status updates to the UI. Avoid polling the database.
+- **Type Safety**: Use strict TypeScript. Avoid `any` - define interfaces for complex data structures.
+- **Background Tasks**: Long-running logic (indexing, heavy LLM calls) must be implemented as Inngest functions.
+- **UI Components**: Use Tailwind CSS and Shadcn UI. Keep components accessible and responsive.
 
----
+## ⚖️ Code of Conduct
 
-## 🎨 Style Guide
-
-- **TypeScript**: Use strict types. Avoid `any` whenever possible.
-- **Tailwind CSS**: Follow mobile-first design. Use `cn()` utility from `lib/utils` for conditional classes.
-- **Component Structure**: Keep components small and focused. Use Server Components by default; add `"use client"` only when necessary for interactivity.
-
----
+By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 📜 License
 
-By contributing, you agree that your contributions will be licensed under its [MIT License](LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).

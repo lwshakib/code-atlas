@@ -5,8 +5,9 @@
  */
 
 // Cloudflare AI Gateway API Key
-export const CLOUDFLARE_AI_GATEWAY_API_KEY = process.env.CLOUDFLARE_AI_GATEWAY_API_KEY!;
+export const CLOUDFLARE_AI_GATEWAY_API_KEY =
+  process.env.CLOUDFLARE_AI_GATEWAY_API_KEY!;
 
 // Cloudflare AI Gateway Endpoint
-export const CLOUDFLARE_AI_GATEWAY_ENDPOINT = process.env.CLOUDFLARE_AI_GATEWAY_ENDPOINT!;
-
+export const CLOUDFLARE_AI_GATEWAY_ENDPOINT =
+  process.env.CLOUDFLARE_AI_GATEWAY_ENDPOINT!;

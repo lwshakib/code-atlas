@@ -2,77 +2,76 @@
 
 **Code Atlas** is a next-generation AI agent for codebase exploration. It maps your repository's mental model into a high-performance **Graph-Native Knowledge Base**, allowing you to chat with your code, visualize complex architectural relationships, and search for logic semantically.
 
-## 🚀 Features
+## 🚀 Overview
 
-- **🧠 Multi-Modal Analysis**: Uses advanced LLMs to extract structural, semantic, and architectural insights from raw source code.
+```mermaid
+graph TD
+    A[GitHub Repository] --> B[Inngest Indexing Pipeline]
+    B --> C[PostgreSQL: Metadata]
+    B --> D[Neo4j: Graph Relations]
+    B --> E[Pinecone: Semantic Vectors]
+    F[User] --> G[Next.js Workspace]
+    G --> H[Agentic AI Chat]
+    G --> I[Architectural Wiki]
+    H <--> D
+    H <--> E
+```
 
-- **🕸️ Graph-Native Architecture**: Maps imports, exports, and function calls into **Neo4j**, enabling complex dependency analysis and visual maps.
+## ✨ Features
+
+- **🧠 Multi-Modal Analysis**: Extracts structural, semantic, and architectural insights from raw source code.
+- **🕸️ Graph-Native Architecture**: Maps imports, exports, and function calls into **Neo4j**, enabling complex dependency analysis.
 - **🔍 Semantic Search**: Powered by **Pinecone** and Cloudflare's **BGE-M3** embeddings, find _functionality_ instead of just _keywords_.
-- **⚡ Real-time Indexing**: Background processing via **Inngest** with live status updates delivered through server-side events.
-- **💬 Agentic Chat**: A research-driven chat assistant that autonomously explores your files to answer difficult architecture questions.
+- **⚡ Real-time Indexing**: Background processing via **Inngest** with live status updates delivered via SSE.
+- **💬 Agentic Chat**: A research-driven chat assistant that autonomously explores your files to answer architecture questions.
 
 ---
 
-## 🖼️ App Demo
+## 🛠️ Tech Stack
 
-|                     Landing Page                      |                        Dashboard                        |                     Code Exploration                      |
-| :---------------------------------------------------: | :-----------------------------------------------------: | :-------------------------------------------------------: |
-| <img src="public/app_demo/landing.png" width="250" /> | <img src="public/app_demo/dashboard.png" width="250" /> | <img src="public/app_demo/exploration.png" width="250" /> |
-
----
-
-## 🛠️ Stack
-
-- **Framework**: [Next.js 15 (App Router)](https://nextjs.org/)
+- **Framework**: Next.js 15 (App Router)
+- **Package Manager**: PNPM
 - **Databases**:
-  - [**PostgreSQL (Prisma)**](https://www.prisma.io/): Persistent user data & session management.
-  - [**Neo4j**](https://neo4j.com/): Graph representation of the codebase.
-  - [**Pinecone**](https://www.pinecone.io/): Vector storage for semantic RAG.
-- **Orchestration**: [**Inngest**](https://www.inngest.com/) for reliable background workflows & real-time events.
-- **Auth**: [**Better Auth**](https://www.better-auth.com/) (GitHub OAuth integration).
-- **Styling**: [**Tailwind CSS**](https://tailwindcss.com/) + [**Shadcn UI**](https://ui.shadcn.com/).
+  - **PostgreSQL**: User data & session management.
+  - **Neo4j**: Graph-native codebase mapping.
+  - **Pinecone**: Vector storage for semantic RAG.
+- **Orchestration**: Inngest for reliable background workflows.
+- **Auth**: Better Auth (GitHub OAuth).
+- **Styling**: Tailwind CSS + Shadcn UI.
 
 ---
 
 ## 🏁 Getting Started
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/lwshakib/code-atlas.git
-cd code-atlas
-```
-
-### 2. Prerequisites
+### 1. Prerequisites
 
 - Docker (for local Neo4j/Postgres)
-- Node.js & Bun (recommended package manager)
-- API Keys for: Pinecone, Resend, and your chosen LLM provider.
+- Node.js (v20+)
+- **PNPM** (required)
+- API Keys: Pinecone, Resend, Gemini/Google AI.
 
-### 2. Environment Setup
-
-Copy the example environment file and fill in your credentials:
+### 2. Setup
 
 ```bash
+# Clone the repository
+git clone https://github.com/lwshakib/code-atlas.git
+cd code-atlas
+
+# Install dependencies
+pnpm install
+
+# Environment variables
 cp .env.example .env
-```
+# Fill in your .env with the required keys
 
-### 3. Install Dependencies
-
-```bash
-bun install
-```
-
-### 4. Start Infrastructure
-
-```bash
+# Start infrastructure
 docker-compose up -d
-```
 
-### 5. Run Development Server
+# Initialize Database
+pnpm run db:migrate
 
-```bash
-bun dev
+# Start development server
+pnpm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to begin mapping your first repository.
@@ -82,9 +81,9 @@ Open [http://localhost:3000](http://localhost:3000) to begin mapping your first 
 ## 📂 Project Structure
 
 - `/app`: Next.js 15 App Router (Pages, API routes).
-- `/components`: UI kit including the WebGL Background and Codebase components.
-- `/inngest`: Background function logic for GitHub ingestion and indexing.
-- `/lib`: Database client initializers (Neon, Pinecone, Neo4j).
+- `/components`: UI kit including WebGL Background and AI components.
+- `/inngest`: Background logic for GitHub ingestion and indexing.
+- `/lib`: Database client initializers and shared utilities.
 - `/llm`: Embedding generation and agentic streaming logic.
 
 ---

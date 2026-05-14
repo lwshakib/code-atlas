@@ -19,6 +19,7 @@ import {
   Trash2,
   Copy,
   Check,
+  LogOut,
 } from "lucide-react";
 import { Streamdown } from "streamdown"; // Powerful markdown streamer with plugin support
 import { cjk } from "@streamdown/cjk";
@@ -37,7 +38,8 @@ import {
 import { LogoWithText } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 
-import { UserMenu } from "@/components/UserMenu";
+import { authClient } from "@/lib/auth-client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,9 +51,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useChat } from "@/hooks/use-chat"; // Custom Vercel AI SDK wrapper for streaming
 import {
@@ -100,6 +102,8 @@ interface StreamdownCodeProps {
 const streamdownPlugins = { cjk, code, math };
 
 export default function CodebaseDetailsPage() {
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
   // 1. PAGE STATE
   const [scrolled, setScrolled] = React.useState(false); // Navigation aesthetic
   const params = useParams();
@@ -112,6 +116,9 @@ export default function CodebaseDetailsPage() {
   ); // Randomly picked "starting questions"
 
   const [expandedItems, setExpandedItems] = React.useState<string[]>([]); // Sidebar accordion state
+  const [activeTab, setActiveTab] = React.useState<"index" | "docs" | "chat">(
+    "docs",
+  ); // Mobile tab state
 
   // 2. CHAT HOOK
   const {
@@ -127,6 +134,17 @@ export default function CodebaseDetailsPage() {
     api: `/api/chat/${codebaseId}`, // The unique streaming endpoint for this specific codebase
     initialMessages: [],
   });
+
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/");
+          router.refresh();
+        },
+      },
+    });
+  };
 
   /**
    * DATA FETCHING EFFECT
@@ -236,23 +254,27 @@ export default function CodebaseDetailsPage() {
    * Scrolls to a specific documentation page or subsection.
    */
   const scrollToSection = (id: string, isPage: boolean) => {
+    const container = document.getElementById("content-scroll-container");
+    if (!container) return;
+
     if (isPage) {
       setActivePageId(id);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      container.scrollTo({ top: 0, behavior: "smooth" });
+      if (window.innerWidth < 1024) setActiveTab("docs");
       return;
     }
 
     // Direct scroll for subsection anchors
     const element = document.getElementById(id);
     if (element) {
-      const navHeight = 100;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+      const elementPosition = element.offsetTop;
+      const offsetPosition = elementPosition - 20;
 
-      window.scrollTo({
+      container.scrollTo({
         top: offsetPosition,
         behavior: "smooth",
       });
+      if (window.innerWidth < 1024) setActiveTab("docs");
     }
   };
 
@@ -260,11 +282,14 @@ export default function CodebaseDetailsPage() {
    * GLOBAL SCROLL LISTENER
    */
   React.useEffect(() => {
+    const container = document.getElementById("content-scroll-container");
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      if (container) {
+        setScrolled(container.scrollTop > 20);
+      }
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    container?.addEventListener("scroll", handleScroll);
+    return () => container?.removeEventListener("scroll", handleScroll);
   }, []);
 
   /**
@@ -334,10 +359,10 @@ export default function CodebaseDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground/90 selection:bg-primary/30">
+    <div className="h-screen flex flex-col bg-background text-foreground/90 selection:bg-primary/30 overflow-hidden">
       {/* Navigation */}
       <nav
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        className={`w-full z-50 transition-all duration-300 ${
           scrolled
             ? "bg-background/80 backdrop-blur-md border-b border-border py-2"
             : "bg-transparent py-2"
@@ -354,25 +379,107 @@ export default function CodebaseDetailsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowChat(!showChat)}
-              className={`h-9 px-4 rounded-full transition-all ${showChat ? "bg-primary/10 text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-secondary/50"}`}
+              onClick={() => {
+                const newShowChat = !showChat;
+                setShowChat(newShowChat);
+                if (newShowChat && window.innerWidth < 1024) {
+                  setActiveTab("chat");
+                }
+              }}
+              className={cn(
+                "hidden lg:flex h-9 px-4 rounded-full transition-all",
+                showChat
+                  ? "bg-primary/10 text-primary hover:bg-primary/20"
+                  : "text-muted-foreground hover:bg-secondary/50",
+              )}
             >
               <MessageSquare className="w-4 h-4 mr-2" />
               <span className="text-xs font-bold">Chat</span>
             </Button>
-            <UserMenu />
+            {session?.user && (
+              <div className="size-9 rounded-full overflow-hidden border border-border/50 bg-secondary/10 flex-shrink-0">
+                <Avatar className="h-full w-full">
+                  <AvatarImage
+                    src={session.user.image || ""}
+                    alt={session.user.name || "User"}
+                  />
+                  <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                    {session.user.name?.[0]?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Log Out</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to log out?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleSignOut}
+                    variant="destructive"
+                  >
+                    Log Out
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </nav>
 
-      <main className="pt-24 px-8 max-w-full mx-auto pb-12">
-        <div className="grid grid-cols-12 gap-8">
-          {/* I. Left Column: On this page / Index (2/12) */}
-          <aside className="col-span-12 lg:col-span-2 space-y-8 sticky top-24 self-start">
+      {/* Mobile Tabs */}
+      <div className="lg:hidden flex border-b border-border bg-background px-4">
+        {[
+          { id: "index", label: "Index" },
+          { id: "docs", label: "Documentation" },
+          { id: "chat", label: "Chat" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id as any);
+              if (tab.id === "chat") setShowChat(true);
+            }}
+            className={cn(
+              "flex-1 py-4 text-xs font-bold transition-all border-b-2",
+              activeTab === tab.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <main className="flex-1 min-h-0 relative overflow-hidden">
+        <div className="absolute inset-0 flex flex-col lg:flex-row gap-8 p-4 lg:p-8 overflow-hidden">
+          {/* I. Left Column: On this page / Index (2/12 -> w-64) */}
+          <aside
+            className={cn(
+              "w-full lg:w-64 h-full overflow-y-auto pr-4 custom-scrollbar flex-shrink-0",
+              activeTab !== "index" && "hidden lg:block",
+            )}
+          >
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.4 }}
+              className="pb-2"
             >
               <h3 className="text-sm font-semibold text-foreground mb-6">
                 On this page
@@ -395,36 +502,26 @@ export default function CodebaseDetailsPage() {
                           {section.title}
                         </button>
                         <AnimatePresence initial={false}>
-                          {(section.children?.length ?? 0) > 0 &&
-                            isExpanded && (
+                          {isExpanded &&
+                            (section.children?.length ?? 0) > 0 && (
                               <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                transition={{
-                                  duration: 0.3,
-                                  ease: "easeInOut",
-                                }}
-                                className="overflow-hidden"
+                                transition={{ duration: 0.3 }}
+                                className="overflow-hidden space-y-3 pt-2"
                               >
-                                <div className="pl-8 flex flex-col gap-4 pt-4 pb-2">
-                                  {section.children?.map(
-                                    (
-                                      child: CodebaseDocPageChild,
-                                      cIdx: number,
-                                    ) => (
-                                      <button
-                                        key={cIdx}
-                                        onClick={() =>
-                                          scrollToSection(child.id, false)
-                                        }
-                                        className="block text-left text-[12px] font-bold text-foreground/40 hover:text-primary transition-colors leading-tight"
-                                      >
-                                        {child.title}
-                                      </button>
-                                    ),
-                                  )}
-                                </div>
+                                {section.children?.map((sub, sIdx) => (
+                                  <button
+                                    key={sIdx}
+                                    onClick={() =>
+                                      scrollToSection(sub.id, false)
+                                    }
+                                    className="block text-left text-[11px] font-medium text-muted-foreground/60 hover:text-primary transition-colors pl-4 border-l border-border/10 ml-1 py-1"
+                                  >
+                                    {sub.title}
+                                  </button>
+                                ))}
                               </motion.div>
                             )}
                         </AnimatePresence>
@@ -436,15 +533,19 @@ export default function CodebaseDetailsPage() {
             </motion.div>
           </aside>
 
-          {/* II. Center Column: Main Content (6/12 or 10/12) */}
+          {/* II. Center Column: Main Content (flex-1) */}
           <section
-            className={`col-span-12 transition-all duration-500 ease-in-out ${showChat ? "lg:col-span-6" : "lg:col-span-10"} space-y-6`}
+            id="content-scroll-container"
+            className={cn(
+              "flex-1 h-full overflow-y-auto pr-4 custom-scrollbar pb-32 transition-all duration-500",
+              activeTab !== "docs" && "hidden lg:block",
+            )}
           >
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="bg-background/20 rounded-[2.5rem] border border-border/30 p-12 lg:p-16 h-full shadow-2xl shadow-primary/5 space-y-24 scroll-smooth"
+              className="p-6 lg:p-16 space-y-24 scroll-smooth"
             >
               {codebase?.docPages
                 .filter((page: CodebaseDocPage) => page.id === activePageId)
@@ -462,7 +563,7 @@ export default function CodebaseDetailsPage() {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <h1 className="text-4xl font-bold tracking-tighter text-foreground mb-10">
+                        <h1 className="text-3xl lg:text-4xl font-bold tracking-tighter text-foreground mb-10">
                           {section.title}
                         </h1>
 
@@ -544,7 +645,7 @@ export default function CodebaseDetailsPage() {
                                   id={sub.id}
                                   className="scroll-mt-32"
                                 >
-                                  <h2 className="text-2xl font-bold tracking-tight text-foreground mb-6 border-b border-border/10 pb-4">
+                                  <h2 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground mb-6 border-b border-border/10 pb-4">
                                     {sub.title}
                                   </h2>
                                   <div className="text-sm text-muted-foreground/70 leading-relaxed">
@@ -633,20 +734,28 @@ export default function CodebaseDetailsPage() {
             </motion.div>
           </section>
 
-          {/* III. Right Column: Chat (4/12) */}
+          {/* III. Right Column: Chat (flex-1 -> lg:w-[450px]) */}
           <AnimatePresence>
             {showChat && (
-              <aside className="col-span-12 lg:col-span-4 h-[calc(100vh-120px)] sticky top-24">
+              <aside
+                className={cn(
+                  "w-full lg:w-[450px] h-full absolute inset-0 lg:relative z-40 bg-background lg:bg-transparent flex-shrink-0",
+                  activeTab !== "chat" && "hidden lg:block",
+                )}
+              >
                 <motion.div
                   key="chat"
-                  initial={{ opacity: 0, x: 50, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: 50, scale: 0.95 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="h-full bg-secondary/10 rounded-[2.5rem] border border-border/30 overflow-hidden flex flex-col relative shadow-2xl shadow-primary/5"
+                  initial={{ x: "100%", opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{
+                    type: "spring",
+                    damping: 25,
+                    stiffness: 200,
+                  }}
+                  className="h-full bg-secondary/10 lg:rounded-[2.5rem] border-l lg:border border-border/30 overflow-hidden flex flex-col relative shadow-2xl shadow-primary/5"
                 >
-                  {/* Header Actions */}
-                  <div className="absolute top-6 left-6 z-10">
+                  {/* Header Actions (Floating) */}
+                  <div className="absolute top-6 left-6 z-50">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -676,59 +785,67 @@ export default function CodebaseDetailsPage() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                  <Conversation className="flex-1">
-                    <ConversationContent className="pb-32 pt-12 px-6">
-                      {messages.length === 0 ? (
-                        <ConversationEmptyState
-                          icon={
-                            <Sparkles className="w-10 h-10 text-primary/40 mb-2" />
-                          }
-                          title="Ask anything about this codebase"
-                          description="I can help you understand the architecture, find specific logic, or explain dependencies."
-                        />
-                      ) : (
-                        messages.map((m) => (
-                          <AIMessage key={m.id} from={m.role}>
-                            <MessageContent
-                              className={cn(
-                                m.role === "user"
-                                  ? "rounded-3xl bg-primary text-primary-foreground p-5"
-                                  : "rounded-none bg-transparent border-none p-0",
-                              )}
-                            >
-                              {m.role === "assistant" ? (
-                                <div className="space-y-4">
-                                  <MessageResponse
-                                    components={chatStreamdownComponents}
-                                  >
-                                    {m.content}
-                                  </MessageResponse>
-                                  <ToolCallStatus
-                                    toolInvocations={m.toolInvocations}
-                                  />
-                                </div>
-                              ) : (
-                                <>
-                                  <p className="text-sm leading-relaxed">
-                                    {m.content}
-                                  </p>
-                                </>
-                              )}
-                            </MessageContent>
-                            {m.role === "user" && (
-                              <CopyButton content={m.content} isUser={true} />
-                            )}
-                            {m.role === "assistant" && (
-                              <CopyButton content={m.content} isUser={false} />
-                            )}
-                          </AIMessage>
-                        ))
-                      )}
-                    </ConversationContent>
-                    <ConversationScrollButton />
-                  </Conversation>
 
-                  <div className="p-8 pt-4 space-y-6 border-t border-border/5 relative z-20">
+                  {/* Part 1: Scrollable Messages */}
+                  <div className="flex-1 min-h-0 relative">
+                    <Conversation className="h-full">
+                      <ConversationContent className="pt-24 pb-12 px-6">
+                        {messages.length === 0 ? (
+                          <ConversationEmptyState
+                            icon={
+                              <Sparkles className="w-10 h-10 text-primary/40 mb-2" />
+                            }
+                            title="Ask anything about this codebase"
+                            description="I can help you understand the architecture, find specific logic, or explain dependencies."
+                          />
+                        ) : (
+                          messages.map((m) => (
+                            <AIMessage key={m.id} from={m.role}>
+                              <MessageContent
+                                className={cn(
+                                  m.role === "user"
+                                    ? "rounded-3xl bg-primary text-primary-foreground p-5"
+                                    : "rounded-none bg-transparent border-none p-0",
+                                )}
+                              >
+                                {m.role === "assistant" ? (
+                                  <div className="space-y-4">
+                                    <MessageResponse
+                                      components={chatStreamdownComponents}
+                                    >
+                                      {m.content}
+                                    </MessageResponse>
+                                    <ToolCallStatus
+                                      toolInvocations={m.toolInvocations}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="text-sm leading-relaxed">
+                                      {m.content}
+                                    </p>
+                                  </>
+                                )}
+                              </MessageContent>
+                              {m.role === "user" && (
+                                <CopyButton content={m.content} isUser={true} />
+                              )}
+                              {m.role === "assistant" && (
+                                <CopyButton
+                                  content={m.content}
+                                  isUser={false}
+                                />
+                              )}
+                            </AIMessage>
+                          ))
+                        )}
+                      </ConversationContent>
+                      <ConversationScrollButton />
+                    </Conversation>
+                  </div>
+
+                  {/* Part 2: Static Input Area */}
+                  <div className="px-6 pt-4 space-y-4 pb-2 flex-shrink-0 border-t border-border/10">
                     {messages.length === 0 && (
                       <div className="flex flex-col gap-2 mb-4">
                         {shuffledQuestions.map((query, index) => (
@@ -765,7 +882,7 @@ export default function CodebaseDetailsPage() {
                           }
                         }}
                         placeholder="Ask about this repository..."
-                        className="min-h-[100px] max-h-48 bg-transparent border-border/10 focus-visible:ring-primary/20 rounded-2xl pr-14 py-4 resize-none"
+                        className="min-h-[100px] max-h-48 bg-background/50 backdrop-blur-sm border-border/10 focus-visible:ring-primary/20 rounded-2xl pr-14 py-4 resize-none shadow-xl shadow-primary/5"
                       />
                       <Button
                         type={isChatLoading ? "button" : "submit"}

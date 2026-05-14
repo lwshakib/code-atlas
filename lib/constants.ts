@@ -1,22 +1,21 @@
 /**
  * GLOBAL CONSTANTS
  *
- * Centralized configuration for indexing batches, LLM token limits,
- * and embedding heuristics. Tuned for Cloudflare Workers & BGE-M3 models.
+ * Centralized configuration for indexing batches, rate limits,
+ * and ingestion heuristics.
  */
 
-// Number of concurrent documents to process in a single worker batch
-export const BGE_M3_EMBEDDING_BATCH_SIZE = 10;
+// Number of files to process in a single ingestion batch (summaries)
+export const INDEXING_BATCH_SIZE = 50;
 
-// Number of files to pull from GitHub and queue for indexing in one pass
-export const INDEXING_BATCH_SIZE = 100;
+// Number of files to include in a single batch summarization request
+export const SUMMARIZATION_BATCH_SIZE = 50;
 
-/**
- * CLOUDFLARE EMBEDDING LIMITS
- * The BGE-M3 model on Cloudflare has a 60,000 token limit per batch request.
- * We set our limit to 50,000 for a safety buffer against tokenization overhead.
- */
-export const BGE_M3_MAX_TOKENS_PER_BATCH = 50_000;
+// Mandatory wait time between batches to respect API rate limits (e.g., 30k TPM)
+export const BATCH_WAIT_TIME_MS = 60_000;
+
+// Maximum tokens allowed per embedding request
+export const MAX_TOKENS_PER_BATCH = 30_000;
 
 /**
  * TOKEN ESTIMATION
@@ -31,6 +30,3 @@ export const CHARS_PER_TOKEN_ESTIMATE = 1.3;
  * exceeding the model's context window per entry.
  */
 export const MAX_EMBEDDING_TEXT_LENGTH = 3000;
-
-export const CHAT_MODEL_ID = '@cf/meta/llama-3-8b-instruct';
-export const EMBEDDING_MODEL_ID = '@cf/baai/bge-m3';
