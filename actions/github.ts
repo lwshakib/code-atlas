@@ -116,3 +116,51 @@ export async function fetchGithubRepositoriesAction(
     };
   }
 }
+
+/**
+ * Server action to search GitHub repositories using the Search API.
+ * This allows finding repositories that are not yet loaded in the infinite scroll list.
+ */
+export async function searchGithubRepositoriesAction(
+  query: string,
+): Promise<{ success: boolean; data?: GithubRepo[]; error?: string }> {
+  if (!query.trim()) {
+    return { success: true, data: [] };
+  }
+
+  const token = await getGithubAccessToken();
+  if (!token) {
+    return { success: false, error: "GitHub access token not found." };
+  }
+
+  const octokit = new Octokit({ auth: token });
+
+  try {
+    // 1. Get current user's login to scope the search
+    const { data: user } = await octokit.request("GET /user");
+
+    // 2. Search repositories belonging to the user or their organizations
+    const response = await octokit.request("GET /search/repositories", {
+      q: `${query} user:${user.login}`,
+      sort: "updated",
+      per_page: 50,
+    });
+
+    const repos = (response.data.items as GithubRepo[]).map((repo) => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      html_url: repo.html_url,
+      description: repo.description,
+      updated_at: repo.updated_at,
+      stargazers_count: repo.stargazers_count,
+      language: repo.language,
+      private: repo.private,
+    }));
+
+    return { success: true, data: repos };
+  } catch (error) {
+    console.error("searchGithubRepositoriesAction error:", error);
+    return { success: false, error: "Failed to search repositories." };
+  }
+}

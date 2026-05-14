@@ -45,7 +45,10 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { fetchGithubRepositoriesAction } from "@/actions/github"; // Action to fetch user repos via Octokit
+import {
+  fetchGithubRepositoriesAction,
+  searchGithubRepositoriesAction,
+} from "@/actions/github"; // Action to fetch user repos via Octokit
 import { GithubRepo } from "@/actions/github";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -100,7 +103,7 @@ export default function CodebasePage() {
    * FETCH REPOS
    * Triggers the server action to pull repositories from GitHub API.
    */
-  const fetchRepos = async () => {
+  const fetchRepos = React.useCallback(async () => {
     setIsLoadingRepos(true);
     setRepoError(null);
     setPage(1);
@@ -113,7 +116,7 @@ export default function CodebasePage() {
       setRepoError(result.error || "Failed to load repositories");
     }
     setIsLoadingRepos(false);
-  };
+  }, []);
 
   /**
    * FETCH USER CODEBASES
@@ -231,6 +234,42 @@ export default function CodebasePage() {
   };
 
   /**
+   * SEARCH REPOS EFFECT
+   * Debounces the search query and calls the GitHub Search API.
+   * Restores the original repository list when the query is cleared.
+   */
+  React.useEffect(() => {
+    // Only search if we are in the import view and the user is logged in
+    if (dialogView !== "import" || !session) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.trim()) {
+        setIsLoadingRepos(true);
+        setRepoError(null);
+        setHasMore(false); // Disable infinite scroll during search
+
+        try {
+          const result = await searchGithubRepositoriesAction(searchQuery);
+          if (result.success && result.data) {
+            setRepositories(result.data);
+          } else {
+            setRepoError(result.error || "Search failed");
+          }
+        } catch {
+          setRepoError("An error occurred during search.");
+        } finally {
+          setIsLoadingRepos(false);
+        }
+      } else {
+        // If query is cleared, reload the first page of repositories
+        fetchRepos();
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, session, dialogView, fetchRepos]);
+
+  /**
    * AUTO-FETCH REPOS ON DIALOG CHANGE
    */
   React.useEffect(() => {
@@ -238,7 +277,7 @@ export default function CodebasePage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRepos();
     }
-  }, [dialogView, session, repositories.length]);
+  }, [dialogView, session, repositories.length, fetchRepos]);
 
   /**
    * REDIRECT TO LOGIN
@@ -693,11 +732,7 @@ export default function CodebasePage() {
                           Try Again
                         </Button>
                       </div>
-                    ) : repositories.filter((r) =>
-                        r.name
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()),
-                      ).length === 0 ? (
+                    ) : repositories.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center py-12 space-y-3 opacity-50">
                         <Github className="w-8 h-8 text-muted-foreground/30" />
                         <p className="text-[10px] text-muted-foreground">
@@ -708,51 +743,45 @@ export default function CodebasePage() {
                       </div>
                     ) : (
                       <>
-                        {repositories
-                          .filter((r) =>
-                            r.name
-                              .toLowerCase()
-                              .includes(searchQuery.toLowerCase()),
-                          )
-                          .map((repo) => (
-                            <div
-                              key={repo.id}
-                              className={`flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group ${isIndexing ? "opacity-50 pointer-events-none" : ""}`}
-                              onClick={() => handleIndex(repo.full_name)}
-                            >
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="hidden sm:flex flex-shrink-0 w-8 h-8 rounded-lg bg-background border border-border/50 items-center justify-center shadow-sm group-hover:bg-primary/5 transition-colors">
-                                  <Github className="w-4 h-4 text-primary/70" />
+                        {repositories.map((repo) => (
+                          <div
+                            key={repo.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border border-border/30 bg-secondary/5 hover:bg-secondary/15 hover:border-primary/10 cursor-pointer transition-all group ${isIndexing ? "opacity-50 pointer-events-none" : ""}`}
+                            onClick={() => handleIndex(repo.full_name)}
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="hidden sm:flex flex-shrink-0 w-8 h-8 rounded-lg bg-background border border-border/50 items-center justify-center shadow-sm group-hover:bg-primary/5 transition-colors">
+                                <Github className="w-4 h-4 text-primary/70" />
+                              </div>
+                              <div className="overflow-hidden">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-bold truncate tracking-tight">
+                                    {repo.name}
+                                  </p>
+                                  {repo.private && (
+                                    <Lock className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
+                                  )}
                                 </div>
-                                <div className="overflow-hidden">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs font-bold truncate tracking-tight">
-                                      {repo.name}
-                                    </p>
-                                    {repo.private && (
-                                      <Lock className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {repo.language && (
-                                      <span className="text-[9px] text-muted-foreground font-medium">
-                                        {repo.language}
-                                      </span>
-                                    )}
-                                    <span className="text-[9px] text-muted-foreground/60">
-                                      {repo.updated_at
-                                        ? formatDistanceToNow(
-                                            new Date(repo.updated_at),
-                                            { addSuffix: true },
-                                          )
-                                        : "Recently"}
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {repo.language && (
+                                    <span className="text-[9px] text-muted-foreground font-medium">
+                                      {repo.language}
                                     </span>
-                                  </div>
+                                  )}
+                                  <span className="text-[9px] text-muted-foreground/60">
+                                    {repo.updated_at
+                                      ? formatDistanceToNow(
+                                          new Date(repo.updated_at),
+                                          { addSuffix: true },
+                                        )
+                                      : "Recently"}
+                                  </span>
                                 </div>
                               </div>
-                              <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0 transition-all flex-shrink-0" />
                             </div>
-                          ))}
+                            <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0 transition-all flex-shrink-0" />
+                          </div>
+                        ))}
                         {isFetchingMore && (
                           <div className="flex items-center gap-3 p-3 rounded-xl border border-border/20 bg-secondary/5 opacity-60">
                             <div className="h-8 w-8 rounded-lg bg-background border border-border/50 items-center justify-center flex shrink-0 shadow-sm overflow-hidden">
