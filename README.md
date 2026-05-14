@@ -17,6 +17,14 @@ graph TD
     H <--> E
 ```
 
+<p align="center">
+  <img src="public/app_demo/landing.png" width="100%" alt="Landing Page" />
+</p>
+<p align="center">
+  <img src="public/app_demo/dashboard.png" width="49%" alt="Dashboard" />
+  <img src="public/app_demo/exploration.png" width="49%" alt="Exploration" />
+</p>
+
 ## ✨ Features
 
 - **🧠 Multi-Modal Analysis**: Extracts structural, semantic, and architectural insights from raw source code.
