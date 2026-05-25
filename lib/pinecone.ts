@@ -1,4 +1,5 @@
 import { Pinecone, Index } from "@pinecone-database/pinecone";
+import { PINECONE_API_KEY, PINECONE_INDEX, checkEnv } from "./env";
 
 /**
  * PINECONE CONFIGURATION
@@ -15,14 +16,9 @@ let pineconeClient: Pinecone | null = null;
  */
 export const getPineconeClient = (): Pinecone => {
   if (!pineconeClient) {
-    const apiKey = process.env.PINECONE_API_KEY;
-
-    if (!apiKey) {
-      throw new Error("PINECONE_API_KEY is not set in environment variables.");
-    }
-
+    checkEnv();
     pineconeClient = new Pinecone({
-      apiKey,
+      apiKey: PINECONE_API_KEY!,
     });
   }
   return pineconeClient;
@@ -36,11 +32,5 @@ export const getPineconeClient = (): Pinecone => {
  */
 export const getPineconeIndex = (): Index => {
   const client = getPineconeClient();
-  const indexName = process.env.PINECONE_INDEX;
-
-  if (!indexName) {
-    throw new Error("PINECONE_INDEX is not set in environment variables.");
-  }
-
-  return client.index(indexName);
+  return client.index(PINECONE_INDEX!);
 };

@@ -7,11 +7,7 @@
  */
 
 import neo4j, { Driver } from "neo4j-driver";
-
-// Connection credentials fetched from environment variables
-const uri = process.env.NEO4J_URI;
-const username = process.env.NEO4J_USERNAME;
-const password = process.env.NEO4J_PASSWORD;
+import { NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, checkEnv } from "./env";
 
 // Singleton driver instance to avoid creating excessive socket connections
 let driver: Driver | null = null;
@@ -22,11 +18,12 @@ let driver: Driver | null = null;
  */
 export const getNeo4jDriver = (): Driver => {
   if (!driver) {
-    if (!uri || !username || !password) {
-      throw new Error("Neo4j environment variables are not set");
-    }
+    checkEnv();
     // Initialize the driver with basic authentication
-    driver = neo4j.driver(uri, neo4j.auth.basic(username, password));
+    driver = neo4j.driver(
+      NEO4J_URI!,
+      neo4j.auth.basic(NEO4J_USERNAME!, NEO4J_PASSWORD!),
+    );
   }
   return driver;
 };
