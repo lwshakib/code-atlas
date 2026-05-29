@@ -7,6 +7,7 @@ import { inngest } from "@/inngest/client";
 import { getNeo4jDriver } from "@/lib/neo4j";
 import { getPineconeIndex } from "@/lib/pinecone";
 import { getSubscriptionToken } from "@inngest/realtime";
+import { decrypt } from "@/lib/crypto";
 
 export async function cancelAndCleanupIndexingAction(codebaseId: string) {
   // Get the current user session using Better Auth
@@ -123,6 +124,8 @@ export async function retryIndexingAction(codebaseId: string) {
       throw new Error("GitHub account not connected");
     }
 
+    const decryptedToken = decrypt(account.accessToken);
+
     // Parse the GitHub URL to extract repository details (owner/repo)
     const urlParts = codebase.url.split("/");
     const owner = urlParts[3];
@@ -141,7 +144,7 @@ export async function retryIndexingAction(codebaseId: string) {
       data: {
         repoFullName,
         codebaseId: codebase.id,
-        accessToken: account.accessToken,
+        accessToken: decryptedToken,
         userId: session.user.id,
       },
     });

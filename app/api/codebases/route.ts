@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { Octokit } from "octokit";
 import { inngest } from "@/inngest/client";
+import { decrypt } from "@/lib/crypto";
 
 /**
  * GET /api/codebases
@@ -79,9 +80,10 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    const decryptedToken = decrypt(account.accessToken);
 
     // Initialize Octokit (GitHub API client) with the user's token
-    const octokit = new Octokit({ auth: account.accessToken });
+    const octokit = new Octokit({ auth: decryptedToken });
 
     // 4. Validate Repository existence and access via GitHub API
     const [owner, repo] = repoFullName.split("/");
@@ -143,7 +145,7 @@ export async function POST(req: Request) {
       data: {
         repoFullName,
         codebaseId: codebase.id,
-        accessToken: account.accessToken,
+        accessToken: decryptedToken,
         userId: session.user.id,
       },
     });
