@@ -27,6 +27,10 @@ export interface GithubRepo {
  * Fetches the GitHub access token for the currently authenticated user.
  * It looks up the connected account in the Postgres database linked to the user's session.
  */
+import { decrypt } from "@/lib/crypto";
+
+// ... (previous lines)
+
 async function getGithubAccessToken() {
   // Retrieve the session using Better Auth from request headers
   const session = await auth.api.getSession({
@@ -46,8 +50,8 @@ async function getGithubAccessToken() {
     },
   });
 
-  // Return the stored OAuth access token (used for Octokit requests)
-  return account?.accessToken;
+  // Return the stored OAuth access token (decrypted if present)
+  return account?.accessToken ? decrypt(account.accessToken) : null;
 }
 
 /**
